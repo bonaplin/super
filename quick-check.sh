@@ -59,9 +59,9 @@ else
     check_ready=false
 fi
 
-# Verificar espaço
-local free_space=$(df / | awk 'NR==2 {printf "%.1f", $4/1024/1024}')
-if (( $(echo "$free_space > 2.0" | bc -l 2>/dev/null || echo 0) )); then
+# Verificar espaço (corrigido - sem 'local' fora de função)
+free_space=$(df / | awk 'NR==2 {printf "%.1f", $4/1024/1024}')
+if command -v bc >/dev/null 2>&1 && (( $(echo "$free_space > 2.0" | bc -l 2>/dev/null || echo 0) )); then
     echo -e "   ${GREEN}✅${NC} Espaço livre (${free_space}GB)"
 else
     echo -e "   ${RED}❌${NC} Pouco espaço (${free_space}GB)"

@@ -3,8 +3,8 @@
 # BIBLIOTECA DE CORES E FORMATAÇÃO
 # =============================================================================
 
-# Verificar se terminal suporta cores
-if [[ -t 1 ]] && [[ $(tput colors 2>/dev/null || echo 0) -ge 8 ]]; then
+# Verificar se terminal suporta cores E se as variáveis ainda não foram definidas
+if [[ -t 1 ]] && [[ $(tput colors 2>/dev/null || echo 0) -ge 8 ]] && [[ -z "${RED:-}" ]]; then
     # Cores básicas
     readonly RED='\033[0;31m'
     readonly GREEN='\033[0;32m'
@@ -35,7 +35,7 @@ if [[ -t 1 ]] && [[ $(tput colors 2>/dev/null || echo 0) -ge 8 ]]; then
     readonly COLOR_ERROR="$RED"
     readonly COLOR_HEADER="$CYAN"
     readonly COLOR_EMPHASIS="$PURPLE"
-else
+elif [[ -z "${RED:-}" ]]; then
     # Terminal sem suporte a cores - usar variáveis vazias
     readonly RED=''
     readonly GREEN=''
@@ -109,8 +109,8 @@ bold() {
 # SÍMBOLOS E ÍCONES UNICODE
 # =============================================================================
 
-# Verificar se terminal suporta UTF-8
-if [[ "${LANG:-}" =~ UTF-8 ]] || [[ "${LC_ALL:-}" =~ UTF-8 ]]; then
+# Verificar se terminal suporta UTF-8 E se os símbolos ainda não foram definidos
+if [[ "${LANG:-}" =~ UTF-8 ]] || [[ "${LC_ALL:-}" =~ UTF-8 ]] && [[ -z "${SYMBOL_SUCCESS:-}" ]]; then
     # Símbolos de status
     readonly SYMBOL_SUCCESS="✅"
     readonly SYMBOL_ERROR="❌"
@@ -147,7 +147,7 @@ if [[ "${LANG:-}" =~ UTF-8 ]] || [[ "${LC_ALL:-}" =~ UTF-8 ]]; then
     readonly SYMBOL_DEVELOPMENT="🛠️"
     readonly SYMBOL_ENTERPRISE="🏢"
     readonly SYMBOL_COMMUNITY="🌍"
-else
+elif [[ -z "${SYMBOL_SUCCESS:-}" ]]; then
     # Terminal sem UTF-8 - usar ASCII
     readonly SYMBOL_SUCCESS="[OK]"
     readonly SYMBOL_ERROR="[ERR]"

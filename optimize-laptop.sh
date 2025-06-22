@@ -14,7 +14,16 @@ readonly VERSION="4.0-modular"
 # =============================================================================
 
 check_essential_dependencies() {
-    echo -e "${BLUE:-}🔍 Verificando dependências essenciais...${NC:-}"
+    # Definir cores apenas se não estiverem já definidas
+    if [[ -z "${BLUE:-}" ]]; then
+        readonly RED='\033[0;31m'
+        readonly GREEN='\033[0;32m'
+        readonly YELLOW='\033[1;33m'
+        readonly BLUE='\033[0;34m'
+        readonly NC='\033[0m'
+    fi
+    
+    echo -e "${BLUE}🔍 Verificando dependências essenciais...${NC}"
     
     local missing_commands=()
     local essential_commands=("sudo" "systemctl" "bc" "curl" "git" "grep" "awk" "sed" "free" "df" "nproc")
@@ -27,16 +36,16 @@ check_essential_dependencies() {
     
     # Verificar se não é root
     if [[ $EUID -eq 0 ]]; then
-        echo -e "${RED:-}❌ NÃO execute como root!${NC:-}"
+        echo -e "${RED}❌ NÃO execute como root!${NC}"
         echo "   Execute como utilizador normal: ./optimize-laptop.sh"
         exit 1
     fi
     
     # Se há comandos em falta
     if [[ ${#missing_commands[@]} -gt 0 ]]; then
-        echo -e "${YELLOW:-}⚠️ Comandos em falta: ${missing_commands[*]}${NC:-}"
+        echo -e "${YELLOW}⚠️ Comandos em falta: ${missing_commands[*]}${NC}"
         echo ""
-        echo -e "${BLUE:-}💡 SOLUÇÕES:${NC:-}"
+        echo -e "${BLUE}💡 SOLUÇÕES:${NC}"
         echo "   1. Instalação automática: ./check-dependencies.sh"
         echo "   2. Instalação manual: sudo apt update && sudo apt install ${missing_commands[*]}"
         echo "   3. Verificação rápida: ./quick-check.sh"
@@ -47,19 +56,19 @@ check_essential_dependencies() {
         if [[ "$auto_install" =~ ^[Yy] ]]; then
             if [[ -f "$SCRIPT_DIR/check-dependencies.sh" ]]; then
                 echo ""
-                echo -e "${BLUE:-}🔧 Executando instalação automática...${NC:-}"
+                echo -e "${BLUE}🔧 Executando instalação automática...${NC}"
                 "$SCRIPT_DIR/check-dependencies.sh"
                 echo ""
-                echo -e "${BLUE:-}🔄 Verificando novamente após instalação...${NC:-}"
+                echo -e "${BLUE}🔄 Verificando novamente após instalação...${NC}"
                 # Verificar novamente após instalação
                 exec "$0" "$@"
             else
-                echo -e "${RED:-}❌ Script check-dependencies.sh não encontrado${NC:-}"
+                echo -e "${RED}❌ Script check-dependencies.sh não encontrado${NC}"
                 echo "   Instalar manualmente: sudo apt update && sudo apt install ${missing_commands[*]}"
                 exit 1
             fi
         else
-            echo -e "${YELLOW:-}⚠️ Dependências em falta - algumas funcionalidades podem falhar${NC:-}"
+            echo -e "${YELLOW}⚠️ Dependências em falta - algumas funcionalidades podem falhar${NC}"
             echo -n "Continuar mesmo assim? (y/N): "
             read response
             if [[ ! "$response" =~ ^[Yy] ]]; then
@@ -67,12 +76,12 @@ check_essential_dependencies() {
             fi
         fi
     else
-        echo -e "${GREEN:-}✅ Todas as dependências essenciais presentes${NC:-}"
+        echo -e "${GREEN}✅ Todas as dependências essenciais presentes${NC}"
     fi
     
     # Verificar sudo
     if ! sudo -n true 2>/dev/null && ! sudo -v 2>/dev/null; then
-        echo -e "${RED:-}❌ Sudo não configurado corretamente${NC:-}"
+        echo -e "${RED}❌ Sudo não configurado corretamente${NC}"
         exit 1
     fi
     
@@ -102,13 +111,6 @@ verify_project_structure() {
 # =============================================================================
 # CARREGAR BIBLIOTECAS (após verificação)
 # =============================================================================
-
-# Definir cores básicas caso não carreguem
-readonly RED='\033[0;31m'
-readonly GREEN='\033[0;32m'
-readonly YELLOW='\033[1;33m'
-readonly BLUE='\033[0;34m'
-readonly NC='\033[0m'
 
 # Carregar bibliotecas se existirem
 [[ -f "$SCRIPT_DIR/lib/colors.sh" ]] && source "$SCRIPT_DIR/lib/colors.sh"

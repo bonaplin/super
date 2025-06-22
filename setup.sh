@@ -42,10 +42,9 @@ check_requirements() {
         exit 1
     fi
     
-    # Verificar estrutura
+    # Verificar estrutura (removido laptop-optimizer-main.sh)
     local required_files=(
         "optimize-laptop.sh"
-        "laptop-optimizer-main.sh"
         "lib/colors.sh"
         "lib/common.sh"
         "config/settings.conf"
@@ -71,10 +70,12 @@ install_system() {
     cp -r "$SCRIPT_DIR"/* "$INSTALL_DIR/"
     
     # Definir permissões
-    chmod +x "$INSTALL_DIR"/*.sh
-    chmod +x "$INSTALL_DIR"/lib/*.sh
-    chmod +x "$INSTALL_DIR"/modules/*.sh
-    chmod +x "$INSTALL_DIR"/tests/*.sh
+    chmod +x "$INSTALL_DIR"/*.sh 2>/dev/null || true
+    
+    # Definir permissões para subdirectórios se existirem
+    [[ -d "$INSTALL_DIR/lib" ]] && chmod +x "$INSTALL_DIR"/lib/*.sh 2>/dev/null || true
+    [[ -d "$INSTALL_DIR/modules" ]] && chmod +x "$INSTALL_DIR"/modules/*.sh 2>/dev/null || true
+    [[ -d "$INSTALL_DIR/tests" ]] && chmod +x "$INSTALL_DIR"/tests/*.sh 2>/dev/null || true
     
     success "Ficheiros copiados para $INSTALL_DIR"
 }
