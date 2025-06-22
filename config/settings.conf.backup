@@ -1,0 +1,253 @@
+# =============================================================================
+# LAPTOP OPTIMIZER - CONFIGURAÇÃO PRINCIPAL
+# Versão: 4.0-modular
+# =============================================================================
+
+# === CONFIGURAÇÕES GERAIS ===
+VERSION="4.0-modular"
+SCRIPT_NAME="Laptop Optimizer"
+LOG_LEVEL="INFO"  # DEBUG, INFO, WARNING, ERROR
+ENABLE_COLORS="true"
+ENABLE_NOTIFICATIONS="true"
+
+# === CONFIGURAÇÕES DE BACKUP ===
+# Máximo de backups a manter
+MAX_BACKUPS=10
+
+# Criar backup automático antes de alterações
+AUTO_BACKUP="true"
+
+# Diretório base para backups
+BACKUP_BASE_DIR="$HOME/.laptop-optimizer-backups"
+
+# === CONFIGURAÇÕES DE SISTEMA ===
+# Threshold de espaço livre mínimo (GB)
+MIN_FREE_SPACE_GB=2.0
+
+# Threshold para alertas de espaço baixo (GB)  
+ALERT_THRESHOLD_GB=3.0
+
+# Verificar conectividade antes de downloads
+CHECK_CONNECTIVITY="true"
+
+# === CONFIGURAÇÕES DE DESENVOLVIMENTO ===
+# inotify watches baseado na RAM
+INOTIFY_WATCHES_4GB=131072
+INOTIFY_WATCHES_8GB=262144
+INOTIFY_WATCHES_16GB=524288
+INOTIFY_WATCHES_32GB=1048576
+
+# File descriptor limits
+NOFILE_SOFT_DEFAULT=16384
+NOFILE_HARD_DEFAULT=32768
+NOFILE_SOFT_HIGH_RAM=32768
+NOFILE_HARD_HIGH_RAM=65536
+
+# === CONFIGURAÇÕES DE KERNEL ===
+# Swappiness (0-100, padrão Ubuntu: 60)
+SWAPPINESS_DEFAULT=10
+SWAPPINESS_LOW_RAM=20  # Para sistemas com <4GB
+
+# Dirty ratios (% de RAM)
+DIRTY_RATIO_DEFAULT=15
+DIRTY_BG_RATIO_DEFAULT=5
+
+# VFS cache pressure (padrão Ubuntu: 100)
+VFS_CACHE_PRESSURE=80
+
+# === CONFIGURAÇÕES DE MANUTENÇÃO ===
+# Modo de limpeza Docker padrão
+DOCKER_CLEANUP_MODE="conservative"  # conservative|moderate|aggressive
+
+# Ativar manutenção automática
+ENABLE_AUTO_MAINTENANCE="true"
+
+# Retenção de logs de manutenção (dias)
+MAINTENANCE_LOG_RETENTION=90
+
+# Notificações desktop para alertas
+ENABLE_DESKTOP_NOTIFICATIONS="true"
+
+# === CONFIGURAÇÕES EMPRESARIAIS ===
+# Modo conservador automático se detectado ambiente empresarial
+AUTO_ENTERPRISE_MODE="true"
+
+# Score mínimo para ativar modo empresarial automático
+ENTERPRISE_SCORE_THRESHOLD=5
+
+# Pular configurações que podem conflitar
+SKIP_CONFLICTS_AUTO="true"
+
+# === CONFIGURAÇÕES DE REDE ===
+# Aplicar otimizações de rede por padrão
+APPLY_NETWORK_TWEAKS="ask"  # ask|yes|no
+
+# Buffers de rede (bytes)
+RMEM_MAX_DEFAULT=2097152  # 2MB
+WMEM_MAX_DEFAULT=2097152  # 2MB
+RMEM_MAX_CONSERVATIVE=212992  # Padrão Ubuntu
+
+# DNS padrão para otimização
+DNS_PRIMARY="1.1.1.1"
+DNS_SECONDARY="8.8.8.8"
+DNS_FALLBACK_1="1.0.0.1"
+DNS_FALLBACK_2="8.8.4.4"
+
+# === CONFIGURAÇÕES DE SEGURANÇA ===
+# Instalar fail2ban se SSH ativo
+INSTALL_FAIL2BAN="ask"  # ask|yes|no
+
+# Hardening SSH automático
+SSH_HARDENING="ask"  # ask|yes|no
+
+# Configurar firewall UFW
+CONFIGURE_FIREWALL="ask"  # ask|yes|no
+
+# === CONFIGURAÇÕES DE FERRAMENTAS ===
+# Instalar Oh-My-Zsh se Zsh escolhido
+INSTALL_OH_MY_ZSH="true"
+
+# Instalar ferramentas modernas
+INSTALL_MODERN_TOOLS="ask"  # ask|yes|no
+
+# Ferramentas modernas a instalar (separadas por espaço)
+MODERN_TOOLS="fzf bat exa fd ripgrep"
+
+# === CONFIGURAÇÕES DE PERFORMANCE ===
+# Detectar automaticamente tipo de storage
+AUTO_DETECT_STORAGE="true"
+
+# Configurar TRIM automático para SSD/NVMe
+AUTO_CONFIGURE_TRIM="true"
+
+# Otimizar I/O scheduler baseado no storage
+OPTIMIZE_IO_SCHEDULER="true"
+
+# === CONFIGURAÇÕES DE INTERAÇÃO ===
+# Timeout para perguntas automáticas (segundos)
+QUESTION_TIMEOUT=30
+
+# Resposta padrão para perguntas (y/n)
+DEFAULT_ANSWER="n"
+
+# Mostrar progresso detalhado
+VERBOSE_PROGRESS="true"
+
+# Pausar após operações importantes
+PAUSE_AFTER_OPERATIONS="true"
+
+# === CONFIGURAÇÕES DE CRON ===
+# Horários para manutenção automática
+DAILY_MAINTENANCE_TIME="30 6"      # 06:30
+WEEKLY_MAINTENANCE_TIME="30 7"     # 07:30 domingos
+MONTHLY_MAINTENANCE_TIME="30 8"    # 08:30 primeiro domingo
+MONITOR_INTERVAL_HOURS=6
+
+# === CONFIGURAÇÕES AVANÇADAS ===
+# Permitir execução como root (NÃO RECOMENDADO)
+ALLOW_ROOT_EXECUTION="false"
+
+# Verificar atualizações do script
+CHECK_SCRIPT_UPDATES="false"
+
+# URL do repositório para atualizações
+SCRIPT_REPOSITORY_URL=""
+
+# === CONFIGURAÇÕES DE DEBUG ===
+# Criar logs detalhados
+DETAILED_LOGGING="false"
+
+# Manter ficheiros temporários para debug
+KEEP_TEMP_FILES="false"
+
+# Executar em modo dry-run (não faz alterações)
+DRY_RUN="false"
+
+# === PERSONALIZAÇÃO POR UTILIZADOR ===
+# Estas configurações podem ser sobrescritas em ~/.laptop-optimizer-config
+
+# Carregar configurações personalizadas se existirem
+USER_CONFIG_FILE="$HOME/.laptop-optimizer-config"
+if [[ -f "$USER_CONFIG_FILE" ]]; then
+    source "$USER_CONFIG_FILE"
+fi
+
+# === CONFIGURAÇÕES DE MÓDULOS ===
+# Ativar/desativar módulos específicos
+MODULE_ENTERPRISE_CONFLICTS="true"
+MODULE_DEVELOPMENT_CONFIG="true"
+MODULE_SMART_MAINTENANCE="true"
+MODULE_UTILITY_SCRIPTS="true"
+MODULE_DOCKER_CLEANUP="true"
+MODULE_ESSENTIAL_TWEAKS="true"
+
+# === VALIDAÇÃO DE CONFIGURAÇÕES ===
+# Validar configurações ao carregar
+validate_config() {
+    # Verificar valores numéricos
+    [[ ! "$MAX_BACKUPS" =~ ^[0-9]+$ ]] && MAX_BACKUPS=10
+    [[ ! "$ENTERPRISE_SCORE_THRESHOLD" =~ ^[0-9]+$ ]] && ENTERPRISE_SCORE_THRESHOLD=5
+    [[ ! "$QUESTION_TIMEOUT" =~ ^[0-9]+$ ]] && QUESTION_TIMEOUT=30
+    
+    # Verificar valores de swappiness
+    [[ $SWAPPINESS_DEFAULT -lt 0 || $SWAPPINESS_DEFAULT -gt 100 ]] && SWAPPINESS_DEFAULT=10
+    
+    # Verificar booleanos
+    [[ "$AUTO_BACKUP" != "true" && "$AUTO_BACKUP" != "false" ]] && AUTO_BACKUP="true"
+    [[ "$ENABLE_COLORS" != "true" && "$ENABLE_COLORS" != "false" ]] && ENABLE_COLORS="true"
+    
+    # Verificar modos válidos
+    [[ ! "$DOCKER_CLEANUP_MODE" =~ ^(conservative|moderate|aggressive)$ ]] && DOCKER_CLEANUP_MODE="conservative"
+    
+    return 0
+}
+
+# Executar validação
+validate_config
+
+# === FUNÇÕES DE CONFIGURAÇÃO ===
+# Obter valor de configuração com fallback
+get_config() {
+    local key="$1"
+    local default="$2"
+    local value="${!key}"
+    echo "${value:-$default}"
+}
+
+# Verificar se módulo está ativado
+is_module_enabled() {
+    local module="$1"
+    local module_var="MODULE_${module^^}"
+    local enabled="${!module_var}"
+    [[ "$enabled" == "true" ]]
+}
+
+# Verificar se está em modo empresarial
+is_enterprise_mode() {
+    [[ "${ENTERPRISE_MODE:-false}" == "true" ]]
+}
+
+# Obter configuração baseada na RAM
+get_ram_based_config() {
+    local ram_gb=$(free -g | awk '/^Mem:/{print $2}')
+    
+    if [[ $ram_gb -ge 32 ]]; then
+        echo "high"
+    elif [[ $ram_gb -ge 16 ]]; then
+        echo "medium_high"
+    elif [[ $ram_gb -ge 8 ]]; then
+        echo "medium"
+    elif [[ $ram_gb -ge 4 ]]; then
+        echo "low_medium"
+    else
+        echo "low"
+    fi
+}
+
+# === EXPORT DAS CONFIGURAÇÕES ===
+# Tornar configurações disponíveis para outros scripts
+export VERSION SCRIPT_NAME LOG_LEVEL
+export AUTO_BACKUP MAX_BACKUPS BACKUP_BASE_DIR
+export MIN_FREE_SPACE_GB ALERT_THRESHOLD_GB
+export ENTERPRISE_MODE ENTERPRISE_SCORE_THRESHOLD
+export DOCKER_CLEANUP_MODE ENABLE_AUTO_MAINTENANCE
