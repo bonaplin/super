@@ -13,7 +13,9 @@ if [[ -f "$SCRIPT_DIR/lib/colors.sh" ]] && [[ -z "${RED:-}" ]]; then
 fi
 
 # Variáveis globais
-readonly LOG_FILE="/tmp/laptop-optimizer.log"
+if [[ -z "${LOG_FILE:-}" ]]; then
+    readonly LOG_FILE="/tmp/laptop-optimizer.log"
+fi
 readonly BACKUP_DIR="$HOME/.laptop-optimizer-backup-$(date +%Y%m%d-%H%M%S)"
 
 # =============================================================================
@@ -25,10 +27,10 @@ log() {
     shift
     local message="$*"
     local timestamp=$(date '+%Y-%m-%d %H:%M:%S')
-    
+
     # Log para ficheiro
     echo "${timestamp} [${level}] ${message}" >> "$LOG_FILE"
-    
+
     # Output colorido para terminal (com fallback se cores não disponíveis)
     case "$level" in
         "INFO")    echo -e "${BLUE:-}ℹ${NC:-} ${message}" ;;
@@ -73,7 +75,7 @@ confirm() {
     local question="$1"
     local default="${2:-n}"
     local response
-    
+
     read -p "$(echo -e "${YELLOW:-}?${NC:-} ${question} [${default}]: ")" response
     response=${response:-$default}
     [[ "$response" =~ ^[Yy]([Ee][Ss])?$ ]]
@@ -89,19 +91,19 @@ choose_option() {
     local prompt="$1"
     shift
     local options=("$@")
-    
+
     echo -e "${YELLOW:-}$prompt${NC:-}"
     echo ""
-    
+
     for i in "${!options[@]}"; do
         echo -e "  ${YELLOW:-}$((i+1)).${NC:-} ${options[i]}"
     done
     echo ""
-    
+
     local choice
     while true; do
         read -p "$(echo -e "${CYAN:-}Escolha (1-${#options[@]}):${NC:-} ")" choice
-        
+
         if [[ "$choice" =~ ^[0-9]+$ ]] && [[ "$choice" -ge 1 ]] && [[ "$choice" -le "${#options[@]}" ]]; then
             return $((choice - 1))
         else
@@ -212,7 +214,7 @@ service_is_enabled() {
 safe_service_action() {
     local action="$1"
     local service="$2"
-    
+
     if service_exists "$service"; then
         log_info "$action $service..."
         if sudo systemctl "$action" "$service" 2>/dev/null; then
@@ -246,29 +248,29 @@ package_is_installed() {
 safe_apt_install() {
     local packages=("$@")
     local failed_packages=()
-    
+
     # Verificar se apt existe
     if ! command_exists apt; then
         log_error "APT não disponível neste sistema"
         return 1
     fi
-    
+
     log_info "Instalando pacotes: ${packages[*]}"
-    
+
     # Atualizar cache se necessário
     if [[ ! -f /var/cache/apt/pkgcache.bin ]] || \
        [[ $(find /var/cache/apt/pkgcache.bin -mtime +1 2>/dev/null) ]]; then
         log_info "Atualizando cache apt..."
         sudo apt update -qq 2>/dev/null || log_warning "Falha ao atualizar cache"
     fi
-    
+
     # Instalar cada pacote individualmente para melhor controlo
     for package in "${packages[@]}"; do
         if package_is_installed "$package"; then
             log_info "$package já instalado"
             continue
         fi
-        
+
         if sudo apt install -y "$package" >/dev/null 2>&1; then
             log_success "$package instalado"
         else
@@ -276,13 +278,13 @@ safe_apt_install() {
             failed_packages+=("$package")
         fi
     done
-    
+
     # Reportar falhas se existirem
     if [[ ${#failed_packages[@]} -gt 0 ]]; then
         log_warning "Pacotes que falharam: ${failed_packages[*]}"
         return 1
     fi
-    
+
     return 0
 }
 
@@ -293,7 +295,7 @@ safe_apt_install() {
 backup_file() {
     local file="$1"
     local backup_file="${file}.backup.$(date +%Y%m%d-%H%M%S)"
-    
+
     if [[ -f "$file" ]]; then
         sudo cp "$file" "$backup_file" 2>/dev/null || cp "$file" "$backup_file" 2>/dev/null
         log_info "Backup criado: $backup_file"
@@ -308,12 +310,12 @@ safe_write_config() {
     local file="$1"
     local content="$2"
     local backup_original="${3:-true}"
-    
+
     # Backup do original se pedido
     if [[ "$backup_original" == "true" && -f "$file" ]]; then
         backup_file "$file"
     fi
-    
+
     # Escrever novo ficheiro
     if echo "$content" | sudo tee "$file" >/dev/null 2>&1; then
         log_success "Configuração escrita: $file"
@@ -328,13 +330,13 @@ append_to_file() {
     local file="$1"
     local content="$2"
     local marker="$3"
-    
+
     # Verificar se conteúdo já existe
     if [[ -n "$marker" ]] && grep -q "$marker" "$file" 2>/dev/null; then
         log_info "Configuração já existe em $file"
         return 0
     fi
-    
+
     # Adicionar conteúdo
     if echo "$content" | sudo tee -a "$file" >/dev/null 2>&1; then
         log_success "Conteúdo adicionado a $file"
@@ -447,7 +449,7 @@ cleanup_temp_files() {
 show_operation_summary() {
     local operation="$1"
     local status="$2"
-    
+
     echo ""
     echo -e "${CYAN:-}📋 RESUMO DA OPERAÇÃO: $operation${NC:-}"
     echo "=================================="
@@ -464,18 +466,18 @@ show_operation_summary() {
 check_required_commands() {
     local required_commands=("sudo" "systemctl" "free" "df" "nproc")
     local missing_commands=()
-    
+
     for cmd in "${required_commands[@]}"; do
         if ! command_exists "$cmd"; then
             missing_commands+=("$cmd")
         fi
     done
-    
+
     if [[ ${#missing_commands[@]} -gt 0 ]]; then
         log_error "Comandos em falta: ${missing_commands[*]}"
         return 1
     fi
-    
+
     return 0
 }
 
@@ -487,7 +489,7 @@ check_required_commands() {
 status_message() {
     local type="$1"
     local message="$2"
-    
+
     case "$type" in
         "success")  echo -e "${GREEN:-}✅${NC:-} $message" ;;
         "error")    echo -e "${RED:-}❌${NC:-} $message" ;;
@@ -501,7 +503,7 @@ status_message() {
 section_header() {
     local title="$1"
     local icon="${2:-⚙️}"
-    
+
     echo ""
     echo -e "${CYAN:-}${icon} ${title}${NC:-}"
     echo -e "${CYAN:-}$(printf '─%.0s' $(seq 1 $((${#title} + 3))))${NC:-}"
