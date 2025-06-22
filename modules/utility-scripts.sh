@@ -14,7 +14,7 @@ source "$SCRIPT_DIR/lib/common.sh"
 
 create_dev_status() {
     section_header "Criando dev-status (Dashboard)" "$SYMBOL_COMPUTER"
-    
+
     sudo tee /usr/local/bin/dev-status > /dev/null << 'EOF'
 #!/bin/bash
 # Dashboard completo do laptop de desenvolvimento
@@ -35,22 +35,22 @@ echo "   Kernel: $(uname -r)"
 echo "   Uptime: $(uptime -p 2>/dev/null || uptime | awk -F, '{print $1}' | awk '{print $3,$4}')"
 
 # CPU
-local cpu_cores=$(nproc)
-local cpu_load=$(uptime | awk -F'load average:' '{print $2}' | awk '{print $1}' | tr -d ',')
-local cpu_temp=""
+cpu_cores=$(nproc)
+cpu_load=$(uptime | awk -F'load average:' '{print $2}' | awk '{print $1}' | tr -d ',')
+cpu_temp=""
 if [[ -f /sys/class/thermal/thermal_zone0/temp ]]; then
     cpu_temp=" ($(cat /sys/class/thermal/thermal_zone0/temp | head -c 2)°C)"
 fi
 echo "   CPU: $cpu_cores cores, load: $cpu_load$cpu_temp"
 
 # RAM
-local ram_info=$(free -h | awk '/^Mem:/ {printf "%s usado de %s", $3, $2}')
+ram_info=$(free -h | awk '/^Mem:/ {printf "%s usado de %s", $3, $2}')
 echo "   RAM: $ram_info"
 
 # Bateria se disponível
 if [[ -f /sys/class/power_supply/BAT*/capacity ]]; then
-    local battery=$(cat /sys/class/power_supply/BAT*/capacity 2>/dev/null | head -1)
-    local ac_status="desconhecido"
+    battery=$(cat /sys/class/power_supply/BAT*/capacity 2>/dev/null | head -1)
+    ac_status="desconhecido"
     if [[ -f /sys/class/power_supply/A*/online ]]; then
         [[ $(cat /sys/class/power_supply/A*/online 2>/dev/null) == "1" ]] && ac_status="AC" || ac_status="bateria"
     fi
@@ -65,18 +65,18 @@ echo ""
 
 echo "💾 ARMAZENAMENTO:"
 df -h | grep -E "^/dev/" | while read line; do
-    local device=$(echo $line | awk '{print $1}')
-    local size=$(echo $line | awk '{print $2}')
-    local used=$(echo $line | awk '{print $3}')
-    local available=$(echo $line | awk '{print $4}')
-    local percent=$(echo $line | awk '{print $5}')
-    local mount=$(echo $line | awk '{print $6}')
-    
-    local status="🟢"
-    local percent_num=$(echo $percent | tr -d '%')
+    device=$(echo $line | awk '{print $1}')
+    size=$(echo $line | awk '{print $2}')
+    used=$(echo $line | awk '{print $3}')
+    available=$(echo $line | awk '{print $4}')
+    percent=$(echo $line | awk '{print $5}')
+    mount=$(echo $line | awk '{print $6}')
+
+    status="🟢"
+    percent_num=$(echo $percent | tr -d '%')
     [[ $percent_num -gt 80 ]] && status="🟡"
     [[ $percent_num -gt 90 ]] && status="🔴"
-    
+
     echo "   $status $mount: $used usado de $size ($available livre) - $percent"
 done
 
@@ -105,7 +105,7 @@ fi
 
 # Git
 if command -v git >/dev/null 2>&1; then
-    local git_user=$(git config --global user.name 2>/dev/null || echo "não configurado")
+    git_user=$(git config --global user.name 2>/dev/null || echo "não configurado")
     echo "   ✅ Git: $(git --version | awk '{print $3}') ($git_user)"
 else
     echo "   ❌ Git: Não instalado"
@@ -113,7 +113,7 @@ fi
 
 # Docker
 if command -v docker >/dev/null 2>&1; then
-    local containers=$(docker ps -q 2>/dev/null | wc -l || echo "0")
+    containers=$(docker ps -q 2>/dev/null | wc -l || echo "0")
     echo "   ✅ Docker: $containers containers ativos"
 else
     echo "   ❌ Docker: Não instalado"
@@ -121,7 +121,7 @@ fi
 
 # Shell moderno
 if command -v zsh >/dev/null 2>&1; then
-    local current_shell=$(basename "$SHELL")
+    current_shell=$(basename "$SHELL")
     echo "   ✅ Zsh: disponível (atual: $current_shell)"
     [[ -d ~/.oh-my-zsh ]] && echo "   ✅ Oh-My-Zsh: instalado" || echo "   ❌ Oh-My-Zsh: não instalado"
 else
@@ -137,12 +137,12 @@ echo ""
 echo "⚙️ OTIMIZAÇÕES:"
 
 # Sysctl configs
-local sysctl_configs=$(ls /etc/sysctl.d/99-dev-*.conf 2>/dev/null | wc -l)
+sysctl_configs=$(ls /etc/sysctl.d/99-dev-*.conf 2>/dev/null | wc -l)
 if [[ $sysctl_configs -gt 0 ]]; then
     echo "   ✅ Kernel: $sysctl_configs configurações ativas"
     # Mostrar algumas configs importantes
-    local swappiness=$(cat /proc/sys/vm/swappiness 2>/dev/null || echo "padrão")
-    local inotify=$(cat /proc/sys/fs/inotify/max_user_watches 2>/dev/null || echo "padrão")
+    swappiness=$(cat /proc/sys/vm/swappiness 2>/dev/null || echo "padrão")
+    inotify=$(cat /proc/sys/fs/inotify/max_user_watches 2>/dev/null || echo "padrão")
     echo "      • swappiness: $swappiness (padrão Ubuntu: 60)"
     echo "      • inotify watches: $inotify (padrão Ubuntu: 8192)"
 else
@@ -173,7 +173,7 @@ fi
 
 # Sistema de manutenção
 if [[ -f /usr/local/bin/dev-maintenance ]]; then
-    local last_cleanup=$(ls -la /var/log/dev-maintenance/maintenance.log 2>/dev/null | awk '{print $6,$7,$8}' || echo "nunca")
+    last_cleanup=$(ls -la /var/log/dev-maintenance/maintenance.log 2>/dev/null | awk '{print $6,$7,$8}' || echo "nunca")
     echo "   ✅ Manutenção: Configurada (última: $last_cleanup)"
 else
     echo "   ❌ Manutenção: Não configurada"
@@ -188,16 +188,16 @@ echo ""
 echo "📶 REDE:"
 
 # Interfaces
-local interfaces=$(ip addr show | grep -E "^[0-9]+:" | grep -v lo | awk -F: '{print $2}' | xargs | tr ' ' ',')
+interfaces=$(ip addr show | grep -E "^[0-9]+:" | grep -v lo | awk -F: '{print $2}' | xargs | tr ' ' ',')
 echo "   Interfaces: $interfaces"
 
 # DNS
-local dns=$(systemd-resolve --status 2>/dev/null | grep "DNS Servers" | head -1 | awk -F: '{print $2}' | xargs || echo "automático")
+dns=$(systemd-resolve --status 2>/dev/null | grep "DNS Servers" | head -1 | awk -F: '{print $2}' | xargs || echo "automático")
 echo "   DNS: $dns"
 
 # Conectividade
 if ping -c 1 -W 2 8.8.8.8 >/dev/null 2>&1; then
-    local ping_time=$(ping -c 1 8.8.8.8 2>/dev/null | grep "time=" | awk -F"time=" '{print $2}' | awk '{print $1}' | head -1)
+    ping_time=$(ping -c 1 8.8.8.8 2>/dev/null | grep "time=" | awk -F"time=" '{print $2}' | awk '{print $1}' | head -1)
     echo "   ✅ Internet: Online (ping: ${ping_time}ms)"
 else
     echo "   ❌ Internet: Offline ou lento"
@@ -222,7 +222,7 @@ echo "   dev-clean deep       - Limpeza semanal"
 echo "   dev-clean docker     - Ver uso Docker"
 echo ""
 EOF
-    
+
     sudo chmod +x /usr/local/bin/dev-status
     log_success "dev-status criado: dashboard completo do sistema"
 }
@@ -233,7 +233,7 @@ EOF
 
 create_dev_tools() {
     section_header "Criando dev-tools (Verificador)" "$SYMBOL_WRENCH"
-    
+
     sudo tee /usr/local/bin/dev-tools > /dev/null << 'EOF'
 #!/bin/bash
 # Verificar estado das ferramentas de desenvolvimento
@@ -252,7 +252,7 @@ echo "📦 ESSENCIAIS:"
 if command -v node >/dev/null 2>&1; then
     echo "✅ Node.js: $(node --version)"
     echo "✅ npm: $(npm --version)"
-    
+
     # Verificar ferramentas globais comuns
     local global_tools=("nodemon" "live-server" "http-server" "typescript" "create-react-app")
     for tool in "${global_tools[@]}"; do
@@ -273,11 +273,11 @@ fi
 
 echo ""
 
-# Python ecosystem  
+# Python ecosystem
 if command -v python3 >/dev/null 2>&1; then
     echo "✅ Python3: $(python3 --version | awk '{print $2}')"
     echo "✅ pip3: $(pip3 --version | awk '{print $2}')"
-    
+
     # Virtual env
     if python3 -m venv --help >/dev/null 2>&1; then
         echo "✅ venv: Disponível"
@@ -336,7 +336,7 @@ if command -v zsh >/dev/null 2>&1; then
     else
         echo "   ❌ Oh-My-Zsh: Não instalado"
     fi
-    
+
     local current_shell=$(basename "$SHELL")
     if [[ "$current_shell" == "zsh" ]]; then
         echo "   ✅ Zsh é o shell padrão"
@@ -350,7 +350,7 @@ fi
 # Ferramentas CLI modernas
 local modern_tools=(
     "fzf:Fuzzy finder"
-    "fd:Find melhorado" 
+    "fd:Find melhorado"
     "bat:Cat com syntax highlighting"
     "exa:ls melhorado"
     "eza:ls melhorado (fork moderno)"
@@ -362,7 +362,7 @@ local modern_tools=(
 for tool_desc in "${modern_tools[@]}"; do
     local tool="${tool_desc%%:*}"
     local desc="${tool_desc##*:}"
-    
+
     if command -v "$tool" >/dev/null 2>&1; then
         echo "✅ $tool: $desc"
     else
@@ -380,7 +380,7 @@ echo "📚 GIT & DESENVOLVIMENTO:"
 
 if command -v git >/dev/null 2>&1; then
     echo "✅ Git: $(git --version | awk '{print $3}')"
-    
+
     if git config --global user.name >/dev/null 2>&1; then
         local git_user=$(git config --global user.name)
         local git_email=$(git config --global user.email)
@@ -388,14 +388,14 @@ if command -v git >/dev/null 2>&1; then
     else
         echo "   ⚠️ Não configurado (git config --global user.name/email)"
     fi
-    
+
     # Git tools
     if command -v gh >/dev/null 2>&1; then
         echo "   ✅ GitHub CLI: $(gh --version | head -1 | awk '{print $3}')"
     else
         echo "   ❌ GitHub CLI: Não instalado"
     fi
-    
+
     if command -v lazygit >/dev/null 2>&1; then
         echo "   ✅ Lazygit: Git TUI instalado"
     else
@@ -415,7 +415,7 @@ echo "🐳 CONTAINERIZAÇÃO:"
 
 if command -v docker >/dev/null 2>&1; then
     echo "✅ Docker: $(docker --version | awk '{print $3}' | tr -d ',')"
-    
+
     # Verificar se user está no grupo docker
     if groups "$USER" | grep -q docker; then
         echo "   ✅ Utilizador no grupo docker"
@@ -423,14 +423,14 @@ if command -v docker >/dev/null 2>&1; then
         echo "   ⚠️ Utilizador não está no grupo docker"
         echo "      💡 Adicionar: sudo usermod -aG docker $USER"
     fi
-    
+
     # Docker compose
     if command -v docker-compose >/dev/null 2>&1; then
         echo "   ✅ Docker Compose: $(docker-compose --version | awk '{print $3}' | tr -d ',')"
     else
         echo "   ❌ Docker Compose: Não instalado"
     fi
-    
+
     # Estado do Docker
     if systemctl is-active --quiet docker; then
         local containers=$(docker ps -q 2>/dev/null | wc -l)
@@ -478,7 +478,7 @@ echo "   dev-health      - Health check sistema"
 echo "   dev-benchmark   - Testar performance"
 echo ""
 EOF
-    
+
     sudo chmod +x /usr/local/bin/dev-tools
     log_success "dev-tools criado: verificador de ferramentas"
 }
@@ -489,7 +489,7 @@ EOF
 
 create_dev_health() {
     section_header "Criando dev-health (Health Check)" "$SYMBOL_SHIELD"
-    
+
     sudo tee /usr/local/bin/dev-health > /dev/null << 'EOF'
 #!/bin/bash
 # Health check completo do sistema
@@ -576,7 +576,7 @@ local services=(
 for service_desc in "${services[@]}"; do
     local service="${service_desc%%:*}"
     local desc="${service_desc##*:}"
-    
+
     if systemctl list-unit-files --type=service | grep -q "^$service.service"; then
         if systemctl is-active --quiet "$service"; then
             echo "   ✅ $desc: Ativo"
@@ -599,7 +599,7 @@ echo "📶 REDE:"
 # Conectividade básica
 if ping -c 1 -W 3 8.8.8.8 >/dev/null 2>&1; then
     echo "   ✅ Internet: Conectado"
-    
+
     # DNS resolution
     if nslookup google.com >/dev/null 2>&1; then
         echo "   ✅ DNS: Funcionando"
@@ -706,12 +706,12 @@ fi
 echo ""
 echo "📊 COMANDOS ÚTEIS:"
 echo "   dev-status      - Dashboard resumido"
-echo "   dev-benchmark   - Testar performance" 
+echo "   dev-benchmark   - Testar performance"
 echo "   dev-clean now   - Limpeza rápida"
 echo "   logs            - Ver logs sistema"
 echo ""
 EOF
-    
+
     sudo chmod +x /usr/local/bin/dev-health
     log_success "dev-health criado: health check completo"
 }
@@ -722,7 +722,7 @@ EOF
 
 create_utility_scripts() {
     log_header "⚡ CRIANDO SCRIPTS UTILITÁRIOS PRÁTICOS"
-    
+
     echo ""
     echo -e "${BLUE}Scripts a criar:${NC}"
     bullet_list \
@@ -730,22 +730,22 @@ create_utility_scripts() {
         "dev-tools - Verificar ferramentas de desenvolvimento" \
         "dev-health - Health check completo" \
         "dev-benchmark - Testar performance (simples)"
-    
+
     echo ""
-    
+
     if ! confirm "Criar scripts utilitários?" "y"; then
         log_info "Scripts utilitários cancelados"
         return 0
     fi
-    
+
     # Criar scripts
     create_dev_status
-    create_dev_tools  
+    create_dev_tools
     create_dev_health
-    
+
     # Script de benchmark simples
     create_simple_benchmark
-    
+
     log_success "🎉 Scripts utilitários criados!"
     echo ""
     echo -e "${YELLOW}💡 TESTAR AGORA:${NC}"
@@ -754,7 +754,7 @@ create_utility_scripts() {
         "dev-tools - Verificar ferramentas" \
         "dev-health - Health check" \
         "dev-benchmark - Testar performance"
-    
+
     echo ""
 }
 
@@ -801,7 +801,7 @@ echo "   Disco: $([ "${speed%.*}" -gt 50 ] 2>/dev/null && echo "Rápido (SSD/NVM
 echo "   Rede: $([ "${ping_avg%.*}" -lt 50 ] 2>/dev/null && echo "Boa" || echo "Normal")"
 echo ""
 EOF
-    
+
     sudo chmod +x /usr/local/bin/dev-benchmark
     log_success "dev-benchmark criado: teste de performance rápido"
 }

@@ -6,41 +6,39 @@
 
 set -euo pipefail
 
-readonly SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
-readonly VERSION="4.0-modular"
+SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
+VERSION="4.0-modular"
 
 # =============================================================================
 # VERIFICAÇÃO AUTOMÁTICA DE DEPENDÊNCIAS
 # =============================================================================
 
 check_essential_dependencies() {
-    # Definir cores apenas se não estiverem já definidas
-    if [[ -z "${BLUE:-}" ]]; then
-        readonly RED='\033[0;31m'
-        readonly GREEN='\033[0;32m'
-        readonly YELLOW='\033[1;33m'
-        readonly BLUE='\033[0;34m'
-        readonly NC='\033[0m'
-    fi
-    
+    # Definir cores se não estiverem já definidas
+    [[ -z "${RED:-}" ]] && RED='\033[0;31m'
+    [[ -z "${GREEN:-}" ]] && GREEN='\033[0;32m'
+    [[ -z "${YELLOW:-}" ]] && YELLOW='\033[1;33m'
+    [[ -z "${BLUE:-}" ]] && BLUE='\033[0;34m'
+    [[ -z "${NC:-}" ]] && NC='\033[0m'
+
     echo -e "${BLUE}🔍 Verificando dependências essenciais...${NC}"
-    
+
     local missing_commands=()
     local essential_commands=("sudo" "systemctl" "bc" "curl" "git" "grep" "awk" "sed" "free" "df" "nproc")
-    
+
     for cmd in "${essential_commands[@]}"; do
         if ! command -v "$cmd" >/dev/null 2>&1; then
             missing_commands+=("$cmd")
         fi
     done
-    
+
     # Verificar se não é root
     if [[ $EUID -eq 0 ]]; then
         echo -e "${RED}❌ NÃO execute como root!${NC}"
         echo "   Execute como utilizador normal: ./optimize-laptop.sh"
         exit 1
     fi
-    
+
     # Se há comandos em falta
     if [[ ${#missing_commands[@]} -gt 0 ]]; then
         echo -e "${YELLOW}⚠️ Comandos em falta: ${missing_commands[*]}${NC}"
@@ -50,9 +48,9 @@ check_essential_dependencies() {
         echo "   2. Instalação manual: sudo apt update && sudo apt install ${missing_commands[*]}"
         echo "   3. Verificação rápida: ./quick-check.sh"
         echo ""
-        
+
         read -p "Tentar instalação automática agora? (y/N): " auto_install
-        
+
         if [[ "$auto_install" =~ ^[Yy] ]]; then
             if [[ -f "$SCRIPT_DIR/check-dependencies.sh" ]]; then
                 echo ""
@@ -78,13 +76,13 @@ check_essential_dependencies() {
     else
         echo -e "${GREEN}✅ Todas as dependências essenciais presentes${NC}"
     fi
-    
+
     # Verificar sudo
     if ! sudo -n true 2>/dev/null && ! sudo -v 2>/dev/null; then
         echo -e "${RED}❌ Sudo não configurado corretamente${NC}"
         exit 1
     fi
-    
+
     echo ""
 }
 
@@ -98,7 +96,7 @@ verify_project_structure() {
         "lib/common.sh"
         "config/settings.conf"
     )
-    
+
     for file in "${required_files[@]}"; do
         if [[ ! -f "$SCRIPT_DIR/$file" ]]; then
             echo -e "${RED:-}❌ Ficheiro crítico em falta: $file${NC:-}"
@@ -125,7 +123,7 @@ confirm() {
     local question="$1"
     local default="${2:-n}"
     local response
-    
+
     read -p "$question [$default]: " response
     response=${response:-$default}
     [[ "$response" =~ ^[Yy]([Ee][Ss])?$ ]]
@@ -254,7 +252,7 @@ show_main_menu() {
 ║                    🚀 LAPTOP OPTIMIZER v$VERSION                           ║
 ╚══════════════════════════════════════════════════════════════════════════════╝
 ${NC}"
-    
+
     echo ""
     echo -e "${BLUE}🎯 ESCOLHE A TUA OPÇÃO:${NC}"
     echo ""
@@ -342,7 +340,7 @@ run_docker_cleanup() {
 
 run_personal_optimization() {
     log_header "💻 OTIMIZAÇÃO COMPLETA PESSOAL"
-    
+
     echo ""
     echo -e "${BLUE}Esta opção vai aplicar:${NC}"
     bullet_list \
@@ -352,12 +350,12 @@ run_personal_optimization() {
         "✅ Sistema de manutenção automática" \
         "✅ Scripts utilitários práticos" \
         "✅ Docker cleanup inteligente"
-    
+
     echo ""
     if ! confirm "Aplicar otimização completa?" "y"; then
         return 0
     fi
-    
+
     # Validação do sistema
     if [[ -f "$SCRIPT_DIR/lib/validation.sh" ]]; then
         source "$SCRIPT_DIR/lib/validation.sh"
@@ -366,13 +364,13 @@ run_personal_optimization() {
             return 1
         fi
     fi
-    
+
     # Backup automático
     if [[ -f "$SCRIPT_DIR/lib/backup.sh" ]]; then
         source "$SCRIPT_DIR/lib/backup.sh"
         create_system_backup
     fi
-    
+
     # Aplicar otimizações
     run_essential_tweaks
     run_development_config
@@ -380,7 +378,7 @@ run_personal_optimization() {
     run_smart_maintenance
     run_utility_scripts
     run_docker_cleanup
-    
+
     # Verificação final
     echo ""
     echo -e "${GREEN}🎉 Otimização completa concluída!${NC}"
@@ -391,13 +389,13 @@ run_personal_optimization() {
         "Testar: dev-status" \
         "Verificar: dev-health" \
         "Benchmark: dev-benchmark"
-    
+
     echo ""
 }
 
 run_enterprise_optimization() {
     log_header "🏢 MODO EMPRESARIAL"
-    
+
     echo ""
     echo -e "${BLUE}Modo empresarial aplica apenas:${NC}"
     bullet_list \
@@ -406,12 +404,12 @@ run_enterprise_optimization() {
         "🛠️ Configurações básicas de desenvolvimento" \
         "⚡ Scripts utilitários (sempre seguros)" \
         "💾 Backup completo obrigatório"
-    
+
     echo ""
     if ! confirm "Aplicar modo empresarial?" "y"; then
         return 0
     fi
-    
+
     # Verificação empresarial
     if [[ -f "$SCRIPT_DIR/modules/enterprise-conflicts.sh" ]]; then
         source "$SCRIPT_DIR/modules/enterprise-conflicts.sh"
@@ -419,40 +417,40 @@ run_enterprise_optimization() {
         enterprise_score=$(detect_enterprise_environment)
         check_enterprise_conflicts
     fi
-    
+
     # Backup obrigatório
     if [[ -f "$SCRIPT_DIR/lib/backup.sh" ]]; then
         source "$SCRIPT_DIR/lib/backup.sh"
         create_system_backup
     fi
-    
+
     # Apenas ferramentas seguras
     if confirm "Instalar ferramentas da comunidade (modo conservador)?" "y"; then
         run_community_tools
     fi
-    
+
     # Configurações mínimas
     run_essential_tweaks
-    
+
     # Scripts utilitários (sempre seguros)
     run_utility_scripts
-    
+
     # Mostrar resumo empresarial
     show_enterprise_summary "${enterprise_score:-0}"
-    
+
     echo -e "${GREEN}🎉 Modo empresarial aplicado com segurança!${NC}"
 }
 
 show_enterprise_summary() {
     local enterprise_score="${1:-0}"
-    
+
     clear
     echo -e "${BLUE}
 ╔══════════════════════════════════════════════════════════════════════════════╗
 ║                    🏢 MODO EMPRESARIAL CONCLUÍDO                           ║
 ╚══════════════════════════════════════════════════════════════════════════════╝
 ${NC}"
-    
+
     echo ""
     echo -e "${GREEN}✅ APLICADO (MODO CONSERVADOR):${NC}"
     echo "   🔋 Ferramentas da comunidade (se selecionado)"
@@ -473,7 +471,7 @@ ${NC}"
     echo ""
     echo -e "${BLUE}📊 Score empresarial detectado: $enterprise_score${NC}"
     echo ""
-    
+
     pause_and_return
 }
 
@@ -484,9 +482,9 @@ ${NC}"
 main() {
     while true; do
         show_main_menu
-        
+
         read -p "Escolhe uma opção [1-9, 0 para sair]: " choice
-        
+
         case "$choice" in
             1)
                 run_community_tools

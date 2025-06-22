@@ -3,20 +3,22 @@
 # BIBLIOTECA COMUM - FUNÇÕES REUTILIZÁVEIS
 # =============================================================================
 
-# Carregar cores se disponível (com verificação de existência)
+# Proteção contra múltiplas inclusões
+[[ -n "${_COMMON_SH_LOADED:-}" ]] && return 0
+_COMMON_SH_LOADED=1
+
+# Carregar cores se disponível
 if [[ -z "${SCRIPT_DIR:-}" ]]; then
-    readonly SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
+    SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
 fi
 
-if [[ -f "$SCRIPT_DIR/lib/colors.sh" ]] && [[ -z "${RED:-}" ]]; then
+if [[ -f "$SCRIPT_DIR/lib/colors.sh" ]]; then
     source "$SCRIPT_DIR/lib/colors.sh"
 fi
 
-# Variáveis globais
-if [[ -z "${LOG_FILE:-}" ]]; then
-    readonly LOG_FILE="/tmp/laptop-optimizer.log"
-fi
-readonly BACKUP_DIR="$HOME/.laptop-optimizer-backup-$(date +%Y%m%d-%H%M%S)"
+# Variáveis globais (sem readonly)
+LOG_FILE="${LOG_FILE:-/tmp/laptop-optimizer.log}"
+BACKUP_DIR="${BACKUP_DIR:-$HOME/.laptop-optimizer-backup-$(date +%Y%m%d-%H%M%S)}"
 
 # =============================================================================
 # LOGGING ESTRUTURADO

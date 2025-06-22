@@ -6,18 +6,19 @@
 
 set -euo pipefail
 
-readonly GREEN='\033[0;32m'
-readonly RED='\033[0;31m'
-readonly YELLOW='\033[1;33m'
-readonly BLUE='\033[0;34m'
-readonly NC='\033[0m'
+# Cores (definir apenas se não estiverem definidas)
+[[ -z "${GREEN:-}" ]] && GREEN='\033[0;32m'
+[[ -z "${RED:-}" ]] && RED='\033[0;31m'
+[[ -z "${YELLOW:-}" ]] && YELLOW='\033[1;33m'
+[[ -z "${BLUE:-}" ]] && BLUE='\033[0;34m'
+[[ -z "${NC:-}" ]] && NC='\033[0m'
 
 check_ready=true
 
 quick_check() {
     local cmd="$1"
     local name="$2"
-    
+
     if command -v "$cmd" >/dev/null 2>&1; then
         echo -e "   ${GREEN}✅${NC} $name"
     else
@@ -59,7 +60,7 @@ else
     check_ready=false
 fi
 
-# Verificar espaço (corrigido - sem 'local' fora de função)
+# Verificar espaço
 free_space=$(df / | awk 'NR==2 {printf "%.1f", $4/1024/1024}')
 if command -v bc >/dev/null 2>&1 && (( $(echo "$free_space > 2.0" | bc -l 2>/dev/null || echo 0) )); then
     echo -e "   ${GREEN}✅${NC} Espaço livre (${free_space}GB)"

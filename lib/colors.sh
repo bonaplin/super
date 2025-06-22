@@ -3,63 +3,67 @@
 # BIBLIOTECA DE CORES E FORMATAÇÃO
 # =============================================================================
 
-# Verificar se terminal suporta cores E se as variáveis ainda não foram definidas
-if [[ -t 1 ]] && [[ $(tput colors 2>/dev/null || echo 0) -ge 8 ]] && [[ -z "${RED:-}" ]]; then
-    # Cores básicas
-    readonly RED='\033[0;31m'
-    readonly GREEN='\033[0;32m'
-    readonly YELLOW='\033[1;33m'
-    readonly BLUE='\033[0;34m'
-    readonly PURPLE='\033[0;35m'
-    readonly CYAN='\033[0;36m'
-    readonly WHITE='\033[1;37m'
-    readonly NC='\033[0m' # No Color
-    
+# Proteção contra múltiplas inclusões
+[[ -n "${_COLORS_SH_LOADED:-}" ]] && return 0
+_COLORS_SH_LOADED=1
+
+# Verificar se terminal suporta cores
+if [[ -t 1 ]] && [[ $(tput colors 2>/dev/null || echo 0) -ge 8 ]]; then
+    # Cores básicas (sem readonly para evitar conflitos)
+    RED='\033[0;31m'
+    GREEN='\033[0;32m'
+    YELLOW='\033[1;33m'
+    BLUE='\033[0;34m'
+    PURPLE='\033[0;35m'
+    CYAN='\033[0;36m'
+    WHITE='\033[1;37m'
+    NC='\033[0m' # No Color
+
     # Cores com fundo
-    readonly BG_RED='\033[41m'
-    readonly BG_GREEN='\033[42m'
-    readonly BG_YELLOW='\033[43m'
-    readonly BG_BLUE='\033[44m'
-    
+    BG_RED='\033[41m'
+    BG_GREEN='\033[42m'
+    BG_YELLOW='\033[43m'
+    BG_BLUE='\033[44m'
+
     # Formatação
-    readonly BOLD='\033[1m'
-    readonly DIM='\033[2m'
-    readonly UNDERLINE='\033[4m'
-    readonly BLINK='\033[5m'
-    readonly REVERSE='\033[7m'
-    
+    BOLD='\033[1m'
+    DIM='\033[2m'
+    UNDERLINE='\033[4m'
+    BLINK='\033[5m'
+    REVERSE='\033[7m'
+
     # Cores específicas para logs
-    readonly COLOR_INFO="$BLUE"
-    readonly COLOR_SUCCESS="$GREEN"
-    readonly COLOR_WARNING="$YELLOW"
-    readonly COLOR_ERROR="$RED"
-    readonly COLOR_HEADER="$CYAN"
-    readonly COLOR_EMPHASIS="$PURPLE"
-elif [[ -z "${RED:-}" ]]; then
+    COLOR_INFO="$BLUE"
+    COLOR_SUCCESS="$GREEN"
+    COLOR_WARNING="$YELLOW"
+    COLOR_ERROR="$RED"
+    COLOR_HEADER="$CYAN"
+    COLOR_EMPHASIS="$PURPLE"
+else
     # Terminal sem suporte a cores - usar variáveis vazias
-    readonly RED=''
-    readonly GREEN=''
-    readonly YELLOW=''
-    readonly BLUE=''
-    readonly PURPLE=''
-    readonly CYAN=''
-    readonly WHITE=''
-    readonly NC=''
-    readonly BG_RED=''
-    readonly BG_GREEN=''
-    readonly BG_YELLOW=''
-    readonly BG_BLUE=''
-    readonly BOLD=''
-    readonly DIM=''
-    readonly UNDERLINE=''
-    readonly BLINK=''
-    readonly REVERSE=''
-    readonly COLOR_INFO=''
-    readonly COLOR_SUCCESS=''
-    readonly COLOR_WARNING=''
-    readonly COLOR_ERROR=''
-    readonly COLOR_HEADER=''
-    readonly COLOR_EMPHASIS=''
+    RED=''
+    GREEN=''
+    YELLOW=''
+    BLUE=''
+    PURPLE=''
+    CYAN=''
+    WHITE=''
+    NC=''
+    BG_RED=''
+    BG_GREEN=''
+    BG_YELLOW=''
+    BG_BLUE=''
+    BOLD=''
+    DIM=''
+    UNDERLINE=''
+    BLINK=''
+    REVERSE=''
+    COLOR_INFO=''
+    COLOR_SUCCESS=''
+    COLOR_WARNING=''
+    COLOR_ERROR=''
+    COLOR_HEADER=''
+    COLOR_EMPHASIS=''
 fi
 
 # =============================================================================
@@ -109,75 +113,75 @@ bold() {
 # SÍMBOLOS E ÍCONES UNICODE
 # =============================================================================
 
-# Verificar se terminal suporta UTF-8 E se os símbolos ainda não foram definidos
-if [[ "${LANG:-}" =~ UTF-8 ]] || [[ "${LC_ALL:-}" =~ UTF-8 ]] && [[ -z "${SYMBOL_SUCCESS:-}" ]]; then
+# Verificar se terminal suporta UTF-8
+if [[ "${LANG:-}" =~ UTF-8 ]] || [[ "${LC_ALL:-}" =~ UTF-8 ]]; then
     # Símbolos de status
-    readonly SYMBOL_SUCCESS="✅"
-    readonly SYMBOL_ERROR="❌"
-    readonly SYMBOL_WARNING="⚠️"
-    readonly SYMBOL_INFO="ℹ️"
-    readonly SYMBOL_QUESTION="❓"
-    readonly SYMBOL_ARROW="➜"
-    readonly SYMBOL_BULLET="•"
-    
+    SYMBOL_SUCCESS="✅"
+    SYMBOL_ERROR="❌"
+    SYMBOL_WARNING="⚠️"
+    SYMBOL_INFO="ℹ️"
+    SYMBOL_QUESTION="❓"
+    SYMBOL_ARROW="➜"
+    SYMBOL_BULLET="•"
+
     # Símbolos funcionais
-    readonly SYMBOL_CHECK="✓"
-    readonly SYMBOL_CROSS="✗"
-    readonly SYMBOL_STAR="⭐"
-    readonly SYMBOL_FIRE="🔥"
-    readonly SYMBOL_ROCKET="🚀"
-    readonly SYMBOL_GEAR="⚙️"
-    readonly SYMBOL_WRENCH="🔧"
-    readonly SYMBOL_COMPUTER="💻"
-    readonly SYMBOL_SHIELD="🛡️"
-    readonly SYMBOL_CLEAN="🧹"
-    
+    SYMBOL_CHECK="✓"
+    SYMBOL_CROSS="✗"
+    SYMBOL_STAR="⭐"
+    SYMBOL_FIRE="🔥"
+    SYMBOL_ROCKET="🚀"
+    SYMBOL_GEAR="⚙️"
+    SYMBOL_WRENCH="🔧"
+    SYMBOL_COMPUTER="💻"
+    SYMBOL_SHIELD="🛡️"
+    SYMBOL_CLEAN="🧹"
+
     # Símbolos de progresso
-    readonly SYMBOL_LOADING="⏳"
-    readonly SYMBOL_DONE="✨"
-    readonly SYMBOL_BUILDING="🏗️"
-    readonly SYMBOL_TESTING="🧪"
-    
+    SYMBOL_LOADING="⏳"
+    SYMBOL_DONE="✨"
+    SYMBOL_BUILDING="🏗️"
+    SYMBOL_TESTING="🧪"
+
     # Símbolos de categoria
-    readonly SYMBOL_SYSTEM="🖥️"
-    readonly SYMBOL_NETWORK="📶"
-    readonly SYMBOL_STORAGE="💾"
-    readonly SYMBOL_SECURITY="🔒"
-    readonly SYMBOL_PERFORMANCE="⚡"
-    readonly SYMBOL_DEVELOPMENT="🛠️"
-    readonly SYMBOL_ENTERPRISE="🏢"
-    readonly SYMBOL_COMMUNITY="🌍"
-elif [[ -z "${SYMBOL_SUCCESS:-}" ]]; then
+    SYMBOL_SYSTEM="🖥️"
+    SYMBOL_NETWORK="📶"
+    SYMBOL_STORAGE="💾"
+    SYMBOL_SECURITY="🔒"
+    SYMBOL_PERFORMANCE="⚡"
+    SYMBOL_DEVELOPMENT="🛠️"
+    SYMBOL_ENTERPRISE="🏢"
+    SYMBOL_COMMUNITY="🌍"
+else
     # Terminal sem UTF-8 - usar ASCII
-    readonly SYMBOL_SUCCESS="[OK]"
-    readonly SYMBOL_ERROR="[ERR]"
-    readonly SYMBOL_WARNING="[WARN]"
-    readonly SYMBOL_INFO="[INFO]"
-    readonly SYMBOL_QUESTION="[?]"
-    readonly SYMBOL_ARROW="->"
-    readonly SYMBOL_BULLET="*"
-    readonly SYMBOL_CHECK="+"
-    readonly SYMBOL_CROSS="x"
-    readonly SYMBOL_STAR="*"
-    readonly SYMBOL_FIRE="!"
-    readonly SYMBOL_ROCKET="^"
-    readonly SYMBOL_GEAR="o"
-    readonly SYMBOL_WRENCH="+"
-    readonly SYMBOL_COMPUTER="PC"
-    readonly SYMBOL_SHIELD="[S]"
-    readonly SYMBOL_CLEAN="~"
-    readonly SYMBOL_LOADING="..."
-    readonly SYMBOL_DONE="!"
-    readonly SYMBOL_BUILDING="..."
-    readonly SYMBOL_TESTING="?"
-    readonly SYMBOL_SYSTEM="SYS"
-    readonly SYMBOL_NETWORK="NET"
-    readonly SYMBOL_STORAGE="DSK"
-    readonly SYMBOL_SECURITY="SEC"
-    readonly SYMBOL_PERFORMANCE="PWR"
-    readonly SYMBOL_DEVELOPMENT="DEV"
-    readonly SYMBOL_ENTERPRISE="ENT"
-    readonly SYMBOL_COMMUNITY="COM"
+    SYMBOL_SUCCESS="[OK]"
+    SYMBOL_ERROR="[ERR]"
+    SYMBOL_WARNING="[WARN]"
+    SYMBOL_INFO="[INFO]"
+    SYMBOL_QUESTION="[?]"
+    SYMBOL_ARROW="->"
+    SYMBOL_BULLET="*"
+    SYMBOL_CHECK="+"
+    SYMBOL_CROSS="x"
+    SYMBOL_STAR="*"
+    SYMBOL_FIRE="!"
+    SYMBOL_ROCKET="^"
+    SYMBOL_GEAR="o"
+    SYMBOL_WRENCH="+"
+    SYMBOL_COMPUTER="PC"
+    SYMBOL_SHIELD="[S]"
+    SYMBOL_CLEAN="~"
+    SYMBOL_LOADING="..."
+    SYMBOL_DONE="!"
+    SYMBOL_BUILDING="..."
+    SYMBOL_TESTING="?"
+    SYMBOL_SYSTEM="SYS"
+    SYMBOL_NETWORK="NET"
+    SYMBOL_STORAGE="DSK"
+    SYMBOL_SECURITY="SEC"
+    SYMBOL_PERFORMANCE="PWR"
+    SYMBOL_DEVELOPMENT="DEV"
+    SYMBOL_ENTERPRISE="ENT"
+    SYMBOL_COMMUNITY="COM"
 fi
 
 # =============================================================================
@@ -189,7 +193,7 @@ draw_box() {
     local text="$1"
     local width="${2:-60}"
     local padding=$(( (width - ${#text} - 2) / 2 ))
-    
+
     echo "┌$(printf '─%.0s' $(seq 1 $width))┐"
     printf "│%*s%s%*s│\n" $padding "" "$text" $padding ""
     echo "└$(printf '─%.0s' $(seq 1 $width))┘"
@@ -200,7 +204,7 @@ print_header() {
     local text="$1"
     local char="${2:-=}"
     local width="${3:-60}"
-    
+
     echo -e "${CYAN}${text}${NC}"
     printf "${char}%.0s" $(seq 1 $width)
     echo ""
@@ -222,13 +226,13 @@ show_progress() {
     local percentage=$((current * 100 / total))
     local filled=$((current * width / total))
     local empty=$((width - filled))
-    
+
     printf "\r${BLUE}Progress: [${GREEN}"
     printf "█%.0s" $(seq 1 $filled)
     printf "${NC}"
     printf " %.0s" $(seq 1 $empty)
     printf "${BLUE}] ${percentage}%%${NC}"
-    
+
     if [[ $current -eq $total ]]; then
         echo ""
     fi
@@ -239,7 +243,7 @@ spinner() {
     local pid=$1
     local delay=0.1
     local spinchars='|/-\'
-    
+
     while kill -0 $pid 2>/dev/null; do
         for char in $(echo $spinchars | fold -w1); do
             printf "\r${BLUE}%c${NC} A processar..." "$char"
@@ -257,7 +261,7 @@ spinner() {
 status_message() {
     local type="$1"
     local message="$2"
-    
+
     case "$type" in
         "success")  echo -e "${GREEN}${SYMBOL_SUCCESS}${NC} $message" ;;
         "error")    echo -e "${RED}${SYMBOL_ERROR}${NC} $message" ;;
@@ -272,7 +276,7 @@ status_message() {
 section_header() {
     local title="$1"
     local icon="${2:-$SYMBOL_GEAR}"
-    
+
     echo ""
     echo -e "${CYAN}${icon} ${title}${NC}"
     echo -e "${CYAN}$(printf '─%.0s' $(seq 1 $((${#title} + 3))))${NC}"
