@@ -14,7 +14,7 @@ readonly VERSION="4.0-modular"
 # =============================================================================
 
 check_essential_dependencies() {
-    echo -e "${BLUE}🔍 Verificando dependências essenciais...${NC}"
+    echo -e "${BLUE:-}🔍 Verificando dependências essenciais...${NC:-}"
     
     local missing_commands=()
     local essential_commands=("sudo" "systemctl" "bc" "curl" "git" "grep" "awk" "sed" "free" "df" "nproc")
@@ -27,50 +27,52 @@ check_essential_dependencies() {
     
     # Verificar se não é root
     if [[ $EUID -eq 0 ]]; then
-        echo -e "${RED}❌ NÃO execute como root!${NC}"
+        echo -e "${RED:-}❌ NÃO execute como root!${NC:-}"
         echo "   Execute como utilizador normal: ./optimize-laptop.sh"
         exit 1
     fi
     
     # Se há comandos em falta
     if [[ ${#missing_commands[@]} -gt 0 ]]; then
-        echo -e "${YELLOW}⚠️ Comandos em falta: ${missing_commands[*]}${NC}"
+        echo -e "${YELLOW:-}⚠️ Comandos em falta: ${missing_commands[*]}${NC:-}"
         echo ""
-        echo -e "${BLUE}💡 SOLUÇÕES:${NC}"
+        echo -e "${BLUE:-}💡 SOLUÇÕES:${NC:-}"
         echo "   1. Instalação automática: ./check-dependencies.sh"
         echo "   2. Instalação manual: sudo apt update && sudo apt install ${missing_commands[*]}"
         echo "   3. Verificação rápida: ./quick-check.sh"
         echo ""
         
-        read -p "$(echo -e "${CYAN}Tentar instalação automática agora? (y/N):${NC} ")" auto_install
+        read -p "Tentar instalação automática agora? (y/N): " auto_install
         
         if [[ "$auto_install" =~ ^[Yy] ]]; then
             if [[ -f "$SCRIPT_DIR/check-dependencies.sh" ]]; then
                 echo ""
-                echo -e "${BLUE}🔧 Executando instalação automática...${NC}"
+                echo -e "${BLUE:-}🔧 Executando instalação automática...${NC:-}"
                 "$SCRIPT_DIR/check-dependencies.sh"
                 echo ""
-                echo -e "${BLUE}🔄 Verificando novamente após instalação...${NC}"
+                echo -e "${BLUE:-}🔄 Verificando novamente após instalação...${NC:-}"
                 # Verificar novamente após instalação
                 exec "$0" "$@"
             else
-                echo -e "${RED}❌ Script check-dependencies.sh não encontrado${NC}"
+                echo -e "${RED:-}❌ Script check-dependencies.sh não encontrado${NC:-}"
                 echo "   Instalar manualmente: sudo apt update && sudo apt install ${missing_commands[*]}"
                 exit 1
             fi
         else
-            echo -e "${YELLOW}⚠️ Dependências em falta - algumas funcionalidades podem falhar${NC}"
-            if ! confirm "Continuar mesmo assim?" "n"; then
+            echo -e "${YELLOW:-}⚠️ Dependências em falta - algumas funcionalidades podem falhar${NC:-}"
+            echo -n "Continuar mesmo assim? (y/N): "
+            read response
+            if [[ ! "$response" =~ ^[Yy] ]]; then
                 exit 1
             fi
         fi
     else
-        echo -e "${GREEN}✅ Todas as dependências essenciais presentes${NC}"
+        echo -e "${GREEN:-}✅ Todas as dependências essenciais presentes${NC:-}"
     fi
     
     # Verificar sudo
     if ! sudo -n true 2>/dev/null && ! sudo -v 2>/dev/null; then
-        echo -e "${RED}❌ Sudo não configurado corretamente${NC}"
+        echo -e "${RED:-}❌ Sudo não configurado corretamente${NC:-}"
         exit 1
     fi
     
@@ -90,7 +92,7 @@ verify_project_structure() {
     
     for file in "${required_files[@]}"; do
         if [[ ! -f "$SCRIPT_DIR/$file" ]]; then
-            echo -e "${RED}❌ Ficheiro crítico em falta: $file${NC}"
+            echo -e "${RED:-}❌ Ficheiro crítico em falta: $file${NC:-}"
             echo "   Certifica-te que tens a estrutura completa do projeto"
             exit 1
         fi
@@ -101,9 +103,63 @@ verify_project_structure() {
 # CARREGAR BIBLIOTECAS (após verificação)
 # =============================================================================
 
-source "$SCRIPT_DIR/lib/colors.sh"
-source "$SCRIPT_DIR/lib/common.sh"
-source "$SCRIPT_DIR/config/settings.conf"
+# Definir cores básicas caso não carreguem
+readonly RED='\033[0;31m'
+readonly GREEN='\033[0;32m'
+readonly YELLOW='\033[1;33m'
+readonly BLUE='\033[0;34m'
+readonly NC='\033[0m'
+
+# Carregar bibliotecas se existirem
+[[ -f "$SCRIPT_DIR/lib/colors.sh" ]] && source "$SCRIPT_DIR/lib/colors.sh"
+[[ -f "$SCRIPT_DIR/lib/common.sh" ]] && source "$SCRIPT_DIR/lib/common.sh"
+[[ -f "$SCRIPT_DIR/config/settings.conf" ]] && source "$SCRIPT_DIR/config/settings.conf"
+
+# =============================================================================
+# FUNÇÕES AUXILIARES
+# =============================================================================
+
+confirm() {
+    local question="$1"
+    local default="${2:-n}"
+    local response
+    
+    read -p "$question [$default]: " response
+    response=${response:-$default}
+    [[ "$response" =~ ^[Yy]([Ee][Ss])?$ ]]
+}
+
+log_header() {
+    echo ""
+    echo -e "${BLUE}╔$(printf '═%.0s' {1..78})╗${NC}"
+    echo -e "${BLUE}║$(printf ' %.0s' {1..78})║${NC}"
+    echo -e "${BLUE}║  $1$(printf ' %.0s' $(seq 1 $((76 - ${#1}))))║${NC}"
+    echo -e "${BLUE}║$(printf ' %.0s' {1..78})║${NC}"
+    echo -e "${BLUE}╚$(printf '═%.0s' {1..78})╝${NC}"
+    echo ""
+}
+
+bullet_list() {
+    while [[ $# -gt 0 ]]; do
+        echo -e "   ${BLUE}•${NC} $1"
+        shift
+    done
+}
+
+pause_and_return() {
+    echo ""
+    read -p "Prima Enter para continuar..."
+    clear
+}
+
+show_system_info() {
+    echo -e "${BLUE}📊 INFORMAÇÃO DO SISTEMA:${NC}"
+    echo "   OS: $(lsb_release -d 2>/dev/null | cut -f2 || echo "Desconhecido")"
+    echo "   Kernel: $(uname -r)"
+    echo "   CPU: $(nproc) cores"
+    echo "   RAM: $(free -g | awk '/^Mem:/{print $2}')GB"
+    echo ""
+}
 
 # =============================================================================
 # ARGUMENTOS E AJUDA
@@ -212,7 +268,7 @@ ${NC}"
     echo ""
     echo -e "${BLUE}0.${NC} ❌ Sair"
     echo ""
-    echo -e "${CYAN}📋 Comandos úteis:${NC}"
+    echo -e "${BLUE}📋 Comandos úteis:${NC}"
     echo "   --check-deps     Verificar dependências completa"
     echo "   --quick-check    Verificação rápida"
     echo "   --help           Ajuda completa"
@@ -220,42 +276,66 @@ ${NC}"
 }
 
 # =============================================================================
-# EXECUÇÃO DOS MÓDULOS (igual ao anterior)
+# EXECUÇÃO DOS MÓDULOS
 # =============================================================================
 
 run_community_tools() {
     log_header "🌍 INSTALANDO FERRAMENTAS DA COMUNIDADE"
-    "$SCRIPT_DIR/install-community-tools.sh"
+    if [[ -f "$SCRIPT_DIR/install-community-tools.sh" ]]; then
+        "$SCRIPT_DIR/install-community-tools.sh"
+    else
+        echo "❌ Script install-community-tools.sh não encontrado"
+    fi
 }
 
 run_essential_tweaks() {
     log_header "🔧 APLICANDO OTIMIZAÇÕES ESSENCIAIS"
-    source "$SCRIPT_DIR/modules/essential-tweaks.sh"
-    apply_essential_tweaks
+    if [[ -f "$SCRIPT_DIR/modules/essential-tweaks.sh" ]]; then
+        source "$SCRIPT_DIR/modules/essential-tweaks.sh"
+        apply_essential_tweaks
+    else
+        echo "❌ Módulo essential-tweaks.sh não encontrado"
+    fi
 }
 
 run_development_config() {
     log_header "🛠️ CONFIGURAÇÕES DE DESENVOLVIMENTO"
-    source "$SCRIPT_DIR/modules/development-config.sh"
-    apply_development_config
+    if [[ -f "$SCRIPT_DIR/modules/development-config.sh" ]]; then
+        source "$SCRIPT_DIR/modules/development-config.sh"
+        apply_development_config
+    else
+        echo "❌ Módulo development-config.sh não encontrado"
+    fi
 }
 
 run_smart_maintenance() {
     log_header "🧹 SISTEMA DE MANUTENÇÃO"
-    source "$SCRIPT_DIR/modules/smart-maintenance.sh"
-    setup_smart_maintenance
+    if [[ -f "$SCRIPT_DIR/modules/smart-maintenance.sh" ]]; then
+        source "$SCRIPT_DIR/modules/smart-maintenance.sh"
+        setup_smart_maintenance
+    else
+        echo "❌ Módulo smart-maintenance.sh não encontrado"
+    fi
 }
 
 run_utility_scripts() {
     log_header "⚡ SCRIPTS UTILITÁRIOS"
-    source "$SCRIPT_DIR/modules/utility-scripts.sh"
-    create_utility_scripts
+    if [[ -f "$SCRIPT_DIR/modules/utility-scripts.sh" ]]; then
+        source "$SCRIPT_DIR/modules/utility-scripts.sh"
+        create_utility_scripts
+    else
+        echo "❌ Módulo utility-scripts.sh não encontrado"
+    fi
 }
 
 run_docker_cleanup() {
     log_header "🐳 DOCKER CLEANUP"
-    source "$SCRIPT_DIR/modules/docker-cleanup.sh"
-    setup_smart_docker_cleanup
+    if [[ -f "$SCRIPT_DIR/modules/docker-cleanup.sh" ]]; then
+        source "$SCRIPT_DIR/modules/docker-cleanup.sh"
+        setup_smart_docker_cleanup
+    else
+        echo "❌ Módulo docker-cleanup.sh não encontrado"
+    fi
 }
 
 run_personal_optimization() {
@@ -280,7 +360,7 @@ run_personal_optimization() {
     if [[ -f "$SCRIPT_DIR/lib/validation.sh" ]]; then
         source "$SCRIPT_DIR/lib/validation.sh"
         if ! validate_system; then
-            log_error "Sistema não passou na validação"
+            echo "❌ Sistema não passou na validação"
             return 1
         fi
     fi
@@ -301,7 +381,7 @@ run_personal_optimization() {
     
     # Verificação final
     echo ""
-    log_success "🎉 Otimização completa concluída!"
+    echo -e "${GREEN}🎉 Otimização completa concluída!${NC}"
     echo ""
     echo -e "${YELLOW}💡 PRÓXIMOS PASSOS:${NC}"
     bullet_list \
@@ -333,19 +413,66 @@ run_enterprise_optimization() {
     # Verificação empresarial
     if [[ -f "$SCRIPT_DIR/modules/enterprise-conflicts.sh" ]]; then
         source "$SCRIPT_DIR/modules/enterprise-conflicts.sh"
+        local enterprise_score
+        enterprise_score=$(detect_enterprise_environment)
         check_enterprise_conflicts
     fi
     
-    # Aplicar apenas configurações seguras
-    run_essential_tweaks
-    run_utility_scripts
+    # Backup obrigatório
+    if [[ -f "$SCRIPT_DIR/lib/backup.sh" ]]; then
+        source "$SCRIPT_DIR/lib/backup.sh"
+        create_system_backup
+    fi
     
-    # Oferecer ferramentas da comunidade
+    # Apenas ferramentas seguras
     if confirm "Instalar ferramentas da comunidade (modo conservador)?" "y"; then
         run_community_tools
     fi
     
-    log_success "🎉 Modo empresarial aplicado com segurança!"
+    # Configurações mínimas
+    run_essential_tweaks
+    
+    # Scripts utilitários (sempre seguros)
+    run_utility_scripts
+    
+    # Mostrar resumo empresarial
+    show_enterprise_summary "${enterprise_score:-0}"
+    
+    echo -e "${GREEN}🎉 Modo empresarial aplicado com segurança!${NC}"
+}
+
+show_enterprise_summary() {
+    local enterprise_score="${1:-0}"
+    
+    clear
+    echo -e "${BLUE}
+╔══════════════════════════════════════════════════════════════════════════════╗
+║                    🏢 MODO EMPRESARIAL CONCLUÍDO                           ║
+╚══════════════════════════════════════════════════════════════════════════════╝
+${NC}"
+    
+    echo ""
+    echo -e "${GREEN}✅ APLICADO (MODO CONSERVADOR):${NC}"
+    echo "   🔋 Ferramentas da comunidade (se selecionado)"
+    echo "   ⚙️ Otimizações essenciais de kernel"
+    echo "   ⚡ Scripts utilitários práticos"
+    echo "   💾 Backup completo do sistema"
+    echo ""
+    echo -e "${BLUE}🛡️ PRESERVADO (SEGURANÇA EMPRESARIAL):${NC}"
+    echo "   📶 Configurações de rede existentes"
+    echo "   🔒 Configurações SSH empresariais"
+    echo "   🛡️ Firewall existente"
+    echo "   🌐 DNS empresarial"
+    echo ""
+    echo -e "${YELLOW}🎯 COMANDOS DISPONÍVEIS:${NC}"
+    echo "   dev-status    - Ver status do sistema"
+    echo "   dev-health    - Health check completo"
+    echo "   dev-tools     - Verificar ferramentas"
+    echo ""
+    echo -e "${BLUE}📊 Score empresarial detectado: $enterprise_score${NC}"
+    echo ""
+    
+    pause_and_return
 }
 
 # =============================================================================
@@ -356,7 +483,7 @@ main() {
     while true; do
         show_main_menu
         
-        read -p "$(echo -e "${CYAN}Escolhe uma opção [1-9, 0 para sair]:${NC} ")" choice
+        read -p "Escolhe uma opção [1-9, 0 para sair]: " choice
         
         case "$choice" in
             1)
@@ -393,13 +520,13 @@ main() {
                 ;;
             0)
                 echo ""
-                log_info "👋 Obrigado por usar o Laptop Optimizer!"
+                echo "👋 Obrigado por usar o Laptop Optimizer!"
                 echo ""
                 exit 0
                 ;;
             *)
                 echo ""
-                log_error "❌ Opção inválida: $choice"
+                echo "❌ Opção inválida: $choice"
                 echo ""
                 read -p "Prima Enter para continuar..."
                 ;;
