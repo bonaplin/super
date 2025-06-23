@@ -256,9 +256,9 @@ ${NC}"
     echo ""
     echo -e "${BLUE}🎯 ESCOLHE A TUA OPÇÃO:${NC}"
     echo ""
-    echo -e "${GREEN}1.${NC} 🌍 Ferramentas da Comunidade (TLP, auto-cpufreq, etc.)"
+    echo -e "${GREEN}1.${NC} 🛠️ Ferramentas de Desenvolvimento (preload, earlyoom, zram, etc.)"
     echo -e "${GREEN}2.${NC} 🔧 Otimizações Essenciais (kernel, limites, inotify)"
-    echo -e "${GREEN}3.${NC} 🛠️ Configurações de Desenvolvimento"
+    echo -e "${GREEN}3.${NC} 💻 Configurações de Desenvolvimento"
     echo -e "${GREEN}4.${NC} 🧹 Sistema de Manutenção Inteligente"
     echo -e "${GREEN}5.${NC} ⚡ Scripts Utilitários Práticos"
     echo -e "${GREEN}6.${NC} 🐳 Docker Cleanup Inteligente"
@@ -272,6 +272,8 @@ ${NC}"
     echo "   --check-deps     Verificar dependências completa"
     echo "   --quick-check    Verificação rápida"
     echo "   --help           Ajuda completa"
+    echo ""
+    echo -e "${YELLOW}⚠️ NOTA:${NC} Gestão energia removida - sistema usa configuração nativa"
     echo ""
 }
 
@@ -344,13 +346,15 @@ run_personal_optimization() {
     echo ""
     echo -e "${BLUE}Esta opção vai aplicar:${NC}"
     bullet_list \
-        "✅ Ferramentas da comunidade (TLP, auto-cpufreq)" \
+        "✅ Ferramentas de desenvolvimento (preload, earlyoom, zram)" \
         "✅ Otimizações de kernel e sistema" \
         "✅ Configurações de desenvolvimento" \
         "✅ Sistema de manutenção automática" \
         "✅ Scripts utilitários práticos" \
         "✅ Docker cleanup inteligente"
 
+    echo ""
+    echo -e "${YELLOW}⚠️ NOTA:${NC} SEM gestão energia (TLP/auto-cpufreq) - usa configuração nativa"
     echo ""
     if ! confirm "Aplicar otimização completa?" "y"; then
         return 0

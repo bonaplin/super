@@ -14,29 +14,29 @@ source "$SCRIPT_DIR/lib/common.sh"
 
 apply_development_kernel_tweaks() {
     section_header "Otimizações de Kernel para Desenvolvimento" "$SYMBOL_GEAR"
-    
+
     local ram_gb=$(get_ram_gb)
     local storage_type=$(detect_storage_type)
-    
+
     echo -e "${BLUE}🎯 Otimizações para desenvolvimento:${NC}"
     bullet_list \
         "vm.swappiness=10 (menos swap, mais responsivo)" \
         "inotify watches aumentado (crítico para IDEs)" \
         "File descriptors aumentados (para builds)" \
         "Configurações conservadoras baseadas no hardware"
-    
+
     echo ""
-    
+
     if ! confirm "Aplicar otimizações de desenvolvimento?" "y"; then
         return 0
     fi
-    
+
     # Configurações baseadas no sistema
     local swappiness=10
     local inotify_watches=262144
     local dirty_ratio=15
     local dirty_bg_ratio=5
-    
+
     # Ajustar baseado na RAM
     if [[ $ram_gb -ge 16 ]]; then
         inotify_watches=524288
@@ -52,9 +52,9 @@ apply_development_kernel_tweaks() {
         dirty_ratio=10
         dirty_bg_ratio=3
     fi
-    
+
     log_info "Configurando para: ${ram_gb}GB RAM, ${storage_type^^} storage"
-    
+
     # Criar configuração sysctl para desenvolvimento
     safe_write_config "/etc/sysctl.d/99-dev-tweaks.conf" \
 "# Otimizações de desenvolvimento para laptop
@@ -94,12 +94,12 @@ kernel.kptr_restrict=1
 
 # Proteção ptrace (padrão Ubuntu: 1)
 kernel.yama.ptrace_scope=1"
-    
+
     # Aplicar configurações imediatamente
     sudo sysctl -p /etc/sysctl.d/99-dev-tweaks.conf >/dev/null 2>&1
-    
+
     log_success "Otimizações de desenvolvimento aplicadas"
-    
+
     # Mostrar diferenças vs Ubuntu padrão
     echo ""
     echo -e "${BLUE}📊 DIFERENÇAS vs UBUNTU PADRÃO:${NC}"
@@ -117,14 +117,14 @@ kernel.yama.ptrace_scope=1"
 
 configure_automatic_trim() {
     section_header "TRIM Automático para SSD" "$SYMBOL_GEAR"
-    
+
     local storage_type=$(detect_storage_type)
-    
+
     if [[ "$storage_type" == "hdd" ]]; then
         status_message "info" "HDD detectado - TRIM não aplicável"
         return 0
     fi
-    
+
     echo -e "${BLUE}💾 SSD/NVMe detectado: ${storage_type^^}${NC}"
     echo ""
     echo -e "${BLUE}Benefícios do TRIM automático:${NC}"
@@ -133,42 +133,119 @@ configure_automatic_trim() {
         "Evita degradação de velocidade de escrita" \
         "Executado automaticamente semanalmente" \
         "Sem impacto na performance durante uso"
-    
+
     echo ""
-    
+
     if ! confirm "Ativar TRIM automático?" "y"; then
         return 0
     fi
-    
-    # Verificar se TRIM está suportado
-    if ! sudo fstrim -v / >/dev/null 2>&1; then
-        status_message "warning" "TRIM não suportado neste sistema"
+
+    # Verificar se o comando fstrim existe e funciona
+    if ! command -v fstrim >/dev/null 2>&1; then
+        status_message "error" "Comando fstrim não encontrado"
+        log_info "Instalar: sudo apt install util-linux"
         return 1
     fi
-    
-    # Ativar fstrim.timer (padrão Ubuntu moderno)
-    if systemctl list-unit-files | grep -q "fstrim.timer"; then
-        safe_service_action "enable" "fstrim.timer"
-        safe_service_action "start" "fstrim.timer"
-        
-        # Verificar status
-        local timer_status=$(systemctl is-active fstrim.timer 2>/dev/null || echo "unknown")
-        if [[ "$timer_status" == "active" ]]; then
-            log_success "TRIM automático ativado (execução semanal)"
-            
-            # Mostrar próxima execução
-            local next_run=$(systemctl list-timers fstrim.timer 2>/dev/null | grep fstrim | awk '{print $1, $2}' || echo "unknown")
-            if [[ "$next_run" != "unknown" ]]; then
-                echo "   Próxima execução: $next_run"
+
+    # Testar se TRIM funciona (teste rápido)
+    echo -e "${BLUE}🔍 Testando suporte TRIM...${NC}"
+    if ! sudo fstrim -v / >/dev/null 2>&1; then
+        status_message "warning" "TRIM não suportado neste filesystem"
+        log_info "Filesystem pode não suportar TRIM ou já está otimizado"
+        return 1
+    fi
+
+    status_message "success" "TRIM suportado - configurando automático"
+
+    # Método 1: Tentar fstrim.timer (Ubuntu 18.04+)
+    local timer_configured=false
+
+    if systemctl list-unit-files 2>/dev/null | grep -q "fstrim.timer"; then
+        log_info "Configurando via systemd timer..."
+
+        if safe_service_action "enable" "fstrim.timer" && safe_service_action "start" "fstrim.timer"; then
+            # Verificar se realmente está ativo
+            local timer_status=$(systemctl is-active fstrim.timer 2>/dev/null || echo "unknown")
+            if [[ "$timer_status" == "active" ]]; then
+                log_success "TRIM automático ativado via systemd (execução semanal)"
+
+                # Mostrar próxima execução se disponível
+                local next_run=$(systemctl list-timers fstrim.timer 2>/dev/null | grep fstrim | awk '{print $1, $2}' || echo "")
+                if [[ -n "$next_run" ]]; then
+                    echo "   Próxima execução: $next_run"
+                fi
+                timer_configured=true
+            else
+                log_warning "fstrim.timer existe mas não consegue ativar"
             fi
         else
-            log_warning "TRIM timer não pôde ser ativado"
+            log_warning "Falha ao ativar fstrim.timer"
         fi
     else
-        # Fallback: criar cron job manual
-        log_info "fstrim.timer não disponível - criando cron job manual"
-        echo "0 2 * * 0 root /sbin/fstrim -av >/dev/null 2>&1" | sudo tee /etc/cron.d/weekly-fstrim >/dev/null
-        log_success "TRIM manual agendado (domingos às 02:00)"
+        log_info "fstrim.timer não disponível neste sistema"
+    fi
+
+    # Método 2: Fallback para cron job manual
+    if [[ "$timer_configured" == false ]]; then
+        log_info "Configurando TRIM via cron job..."
+
+        # Verificar se /sbin/fstrim existe
+        local fstrim_path="/sbin/fstrim"
+        if [[ ! -f "$fstrim_path" ]]; then
+            fstrim_path=$(command -v fstrim 2>/dev/null || echo "/usr/sbin/fstrim")
+        fi
+
+        # Criar cron job
+        sudo tee /etc/cron.d/weekly-fstrim > /dev/null << EOF
+# TRIM automático semanal para SSD/NVMe
+# Executado domingos às 02:00
+0 2 * * 0 root $fstrim_path -av >> /var/log/fstrim.log 2>&1
+EOF
+
+        # Verificar se o ficheiro foi criado
+        if [[ -f /etc/cron.d/weekly-fstrim ]]; then
+            log_success "TRIM automático configurado via cron (domingos às 02:00)"
+            echo "   Log: /var/log/fstrim.log"
+            timer_configured=true
+        else
+            log_error "Falha ao criar cron job"
+        fi
+    fi
+
+    # Método 3: Verificação final e teste
+    if [[ "$timer_configured" == true ]]; then
+        echo ""
+        echo -e "${BLUE}🧪 Executando teste TRIM...${NC}"
+
+        # Executar um TRIM de teste (rápido)
+        if sudo timeout 30s fstrim -v / 2>/dev/null; then
+            log_success "Teste TRIM executado com sucesso"
+        else
+            log_warning "Teste TRIM demorou muito ou falhou (normal em alguns sistemas)"
+        fi
+
+        echo ""
+        status_message "success" "TRIM automático configurado com sucesso!"
+
+        echo -e "${BLUE}📋 VERIFICAÇÃO:${NC}"
+        if systemctl is-active --quiet fstrim.timer 2>/dev/null; then
+            echo "   • Método: systemd timer"
+            echo "   • Status: $(systemctl is-active fstrim.timer)"
+            echo "   • Verificar: systemctl list-timers fstrim.timer"
+        elif [[ -f /etc/cron.d/weekly-fstrim ]]; then
+            echo "   • Método: cron job"
+            echo "   • Agendamento: Domingos às 02:00"
+            echo "   • Verificar: cat /etc/cron.d/weekly-fstrim"
+        fi
+
+    else
+        log_error "Não foi possível configurar TRIM automático"
+        echo ""
+        echo -e "${YELLOW}💡 CONFIGURAÇÃO MANUAL:${NC}"
+        echo "   Execute manualmente: sudo fstrim -av"
+        echo "   Agendar no crontab: crontab -e"
+        echo "   Adicionar: 0 2 * * 0 /sbin/fstrim -av"
+        return 1
     fi
 }
 
@@ -178,12 +255,12 @@ configure_automatic_trim() {
 
 optimize_io_scheduler() {
     section_header "Otimização I/O Scheduler" "$SYMBOL_GEAR"
-    
+
     local storage_type=$(detect_storage_type)
-    
+
     echo -e "${BLUE}📊 Storage detectado: ${storage_type^^}${NC}"
     echo ""
-    
+
     case "$storage_type" in
         "nvme")
             echo -e "${BLUE}Otimizações para NVMe:${NC}"
@@ -192,7 +269,7 @@ optimize_io_scheduler() {
                 "Read-ahead: 512KB (otimizado para NVMe)" \
                 "Queue depth: mantido padrão (alto)"
             ;;
-        "ssd") 
+        "ssd")
             echo -e "${BLUE}Otimizações para SSD:${NC}"
             bullet_list \
                 "Scheduler: mq-deadline ou none" \
@@ -207,27 +284,40 @@ optimize_io_scheduler() {
                 "Otimizações de seek time"
             ;;
     esac
-    
+
     echo ""
-    
+
     if ! confirm "Aplicar otimizações de I/O?" "y"; then
         return 0
     fi
-    
-    # Aplicar otimizações por dispositivo
+
+    echo ""
+    log_info "Aplicando otimizações I/O por dispositivo..."
+
+    # Aplicar otimizações por dispositivo - versão mais robusta
     local optimized_devices=0
-    
-    for device_path in /sys/block/sd* /sys/block/nvme*; do
-        [[ ! -d "$device_path" ]] && continue
-        
-        local device_name=$(basename "$device_path")
-        
-        # Verificar se é dispositivo de storage principal
+
+    # Desativar exit on error temporariamente para esta secção
+    set +e
+
+    # Encontrar todos os dispositivos de bloco
+    local all_devices=($(ls /sys/block/ 2>/dev/null | grep -E "^(sd|nvme)" | head -10))
+
+    echo "   Dispositivos encontrados: ${all_devices[*]}"
+    echo ""
+
+    for device_name in "${all_devices[@]}"; do
+        local device_path="/sys/block/$device_name"
+
+        echo "   🔍 Analisando: $device_name"
+
+        # Verificar se dispositivo existe fisicamente
         if [[ ! -e "/dev/$device_name" ]]; then
+            echo "      ⚠️ /dev/$device_name não existe - ignorando"
             continue
         fi
-        
-        # Detectar tipo do dispositivo específico
+
+        # Detectar tipo do dispositivo
         local device_storage_type="unknown"
         if [[ "$device_name" =~ ^nvme ]]; then
             device_storage_type="nvme"
@@ -239,62 +329,81 @@ optimize_io_scheduler() {
                 device_storage_type="hdd"
             fi
         fi
-        
-        # Aplicar otimizações específicas
+
+        echo "      Tipo detectado: $device_storage_type"
+
+        # Aplicar otimizações por tipo
         case "$device_storage_type" in
             "nvme")
-                # NVMe - usar scheduler 'none' se disponível
                 if [[ -f "$device_path/queue/scheduler" ]]; then
-                    local available_schedulers=$(cat "$device_path/queue/scheduler")
-                    if [[ "$available_schedulers" =~ none ]]; then
-                        echo "none" | sudo tee "$device_path/queue/scheduler" >/dev/null 2>&1
-                        log_info "NVMe $device_name: scheduler 'none'"
+                    local current_scheduler=$(cat "$device_path/queue/scheduler" 2>/dev/null | grep -o '\[.*\]' | tr -d '[]')
+                    echo "      Scheduler atual: $current_scheduler"
+
+                    local available=$(cat "$device_path/queue/scheduler" 2>/dev/null || echo "")
+                    if [[ "$available" =~ none ]]; then
+                        echo "none" | sudo tee "$device_path/queue/scheduler" >/dev/null 2>&1 && \
+                        echo "      ✅ Scheduler: none" || \
+                        echo "      ⚠️ Falha ao configurar scheduler"
                     fi
                 fi
-                
-                # Read-ahead otimizado
-                sudo blockdev --setra 1024 "/dev/$device_name" 2>/dev/null || true
+
+                sudo blockdev --setra 1024 "/dev/$device_name" 2>/dev/null && \
+                echo "      ✅ Read-ahead: 1024KB" || \
+                echo "      ⚠️ Read-ahead: falha"
                 ;;
-                
+
             "ssd")
-                # SSD - mq-deadline ou none
                 if [[ -f "$device_path/queue/scheduler" ]]; then
-                    local available_schedulers=$(cat "$device_path/queue/scheduler")
-                    if [[ "$available_schedulers" =~ none ]]; then
+                    local available=$(cat "$device_path/queue/scheduler" 2>/dev/null || echo "")
+                    if [[ "$available" =~ none ]]; then
                         echo "none" | sudo tee "$device_path/queue/scheduler" >/dev/null 2>&1
-                    else
+                        echo "      ✅ Scheduler: none"
+                    elif [[ "$available" =~ mq-deadline ]]; then
                         echo "mq-deadline" | sudo tee "$device_path/queue/scheduler" >/dev/null 2>&1
+                        echo "      ✅ Scheduler: mq-deadline"
                     fi
-                    log_info "SSD $device_name: scheduler otimizado"
                 fi
-                
-                # Confirmar rotational=0
-                echo 0 | sudo tee "$device_path/queue/rotational" >/dev/null 2>&1 || true
-                
-                # Read-ahead
-                sudo blockdev --setra 512 "/dev/$device_name" 2>/dev/null || true
+
+                echo 0 | sudo tee "$device_path/queue/rotational" >/dev/null 2>&1 && \
+                echo "      ✅ Rotational: 0"
+
+                sudo blockdev --setra 512 "/dev/$device_name" 2>/dev/null && \
+                echo "      ✅ Read-ahead: 512KB"
                 ;;
-                
+
             "hdd")
-                # HDD - mq-deadline
                 if [[ -f "$device_path/queue/scheduler" ]]; then
-                    echo "mq-deadline" | sudo tee "$device_path/queue/scheduler" >/dev/null 2>&1
-                    log_info "HDD $device_name: scheduler 'mq-deadline'"
+                    local available=$(cat "$device_path/queue/scheduler" 2>/dev/null || echo "")
+                    if [[ "$available" =~ mq-deadline ]]; then
+                        echo "mq-deadline" | sudo tee "$device_path/queue/scheduler" >/dev/null 2>&1 && \
+                        echo "      ✅ Scheduler: mq-deadline" || \
+                        echo "      ⚠️ Falha ao configurar scheduler"
+                    fi
                 fi
-                
-                # Read-ahead conservador
-                sudo blockdev --setra 256 "/dev/$device_name" 2>/dev/null || true
+
+                sudo blockdev --setra 256 "/dev/$device_name" 2>/dev/null && \
+                echo "      ✅ Read-ahead: 256KB"
+                ;;
+            *)
+                echo "      ⚠️ Tipo desconhecido"
                 ;;
         esac
-        
+
         ((optimized_devices++))
+        echo ""
     done
-    
+
+    # Reativar exit on error
+    set -e
+
     if [[ $optimized_devices -gt 0 ]]; then
-        log_success "I/O scheduler otimizado para $optimized_devices dispositivos"
+        log_success "I/O scheduler processado para $optimized_devices dispositivos"
     else
-        log_warning "Nenhum dispositivo de storage encontrado para otimizar"
+        log_warning "Nenhum dispositivo encontrado"
     fi
+
+    echo ""
+    echo -e "${BLUE}🔍 Continuando com próxima etapa...${NC}"
 }
 
 # =============================================================================
@@ -303,26 +412,26 @@ optimize_io_scheduler() {
 
 apply_development_limits() {
     section_header "Limites Essenciais para Desenvolvimento" "$SYMBOL_DEVELOPMENT"
-    
+
     echo -e "${BLUE}Configurações críticas para desenvolvimento:${NC}"
     bullet_list \
         "inotify watches (já aplicado nas otimizações de kernel)" \
         "File descriptor limits para builds e IDEs" \
         "Process limits para desenvolvimento" \
         "Configurações baseadas na RAM disponível"
-    
+
     echo ""
-    
+
     if ! confirm "Aplicar limites de desenvolvimento?" "y"; then
         return 0
     fi
-    
+
     local ram_gb=$(get_ram_gb)
     local nofile_soft=16384
     local nofile_hard=32768
     local nproc_soft=8192
     local nproc_hard=16384
-    
+
     # Ajustar baseado na RAM
     if [[ $ram_gb -ge 16 ]]; then
         nofile_soft=32768
@@ -335,7 +444,7 @@ apply_development_limits() {
         nproc_soft=12288
         nproc_hard=24576
     fi
-    
+
     # File descriptor limits essenciais
     safe_write_config "/etc/security/limits.d/99-dev-limits.conf" \
 "# Limites para desenvolvimento - baseado em ${ram_gb}GB RAM
@@ -356,18 +465,18 @@ apply_development_limits() {
 # Stack size (desenvolvimento)
 * soft stack unlimited
 * hard stack unlimited"
-    
+
     # Configurar systemd limits também
     sudo mkdir -p /etc/systemd/{user,system}.conf.d
-    
+
     echo "[Manager]
 DefaultLimitNOFILE=$nofile_hard
 DefaultLimitNPROC=$nproc_hard" | sudo tee /etc/systemd/system.conf.d/dev-limits.conf >/dev/null
-    
-    echo "[Manager]  
+
+    echo "[Manager]
 DefaultLimitNOFILE=$nofile_hard
 DefaultLimitNPROC=$nproc_hard" | sudo tee /etc/systemd/user.conf.d/dev-limits.conf >/dev/null
-    
+
     log_success "Limites de desenvolvimento configurados (aplicados após logout/login)"
     echo ""
     echo -e "${BLUE}📊 LIMITES CONFIGURADOS:${NC}"
@@ -384,10 +493,10 @@ DefaultLimitNPROC=$nproc_hard" | sudo tee /etc/systemd/user.conf.d/dev-limits.co
 
 verify_development_tweaks() {
     section_header "Verificação das Otimizações" "$SYMBOL_CHECK"
-    
+
     echo -e "${BLUE}🔍 Verificando otimizações aplicadas:${NC}"
     echo ""
-    
+
     # Kernel tweaks
     local current_swappiness=$(cat /proc/sys/vm/swappiness 2>/dev/null || echo "unknown")
     if [[ $current_swappiness -le 15 ]]; then
@@ -395,14 +504,14 @@ verify_development_tweaks() {
     else
         status_message "warning" "Swappiness: $current_swappiness (padrão)"
     fi
-    
+
     local current_inotify=$(cat /proc/sys/fs/inotify/max_user_watches 2>/dev/null || echo "unknown")
     if [[ $current_inotify -gt 100000 ]]; then
         status_message "success" "inotify watches: $current_inotify (otimizado)"
     else
         status_message "warning" "inotify watches: $current_inotify (padrão)"
     fi
-    
+
     # TRIM
     if systemctl is-active --quiet fstrim.timer 2>/dev/null; then
         status_message "success" "TRIM automático: ativo"
@@ -411,7 +520,7 @@ verify_development_tweaks() {
     else
         status_message "info" "TRIM automático: não configurado"
     fi
-    
+
     # File limits
     local current_nofile=$(ulimit -n 2>/dev/null || echo "unknown")
     if [[ $current_nofile -gt 8192 ]]; then
@@ -419,7 +528,7 @@ verify_development_tweaks() {
     else
         status_message "info" "File descriptors: $current_nofile (necessário logout/login)"
     fi
-    
+
     # Network buffers
     local rmem_max=$(cat /proc/sys/net/core/rmem_max 2>/dev/null || echo "0")
     if [[ $rmem_max -gt 1000000 ]]; then
@@ -427,7 +536,7 @@ verify_development_tweaks() {
     else
         status_message "info" "Network buffers: padrão ($((rmem_max / 1024))KB)"
     fi
-    
+
     echo ""
     log_success "Verificação concluída"
 }
@@ -438,7 +547,7 @@ verify_development_tweaks() {
 
 apply_essential_tweaks() {
     log_header "🔧 APLICANDO OTIMIZAÇÕES ESSENCIAIS (DESENVOLVIMENTO)"
-    
+
     echo ""
     echo -e "${BLUE}Esta é a configuração para DESENVOLVIMENTO:${NC}"
     bullet_list \
@@ -449,24 +558,24 @@ apply_essential_tweaks() {
         "TRIM automático para proteção SSD" \
         "Network buffers para desenvolvimento web/API" \
         "ZERO gestão de energia (usa configuração sistema)"
-    
+
     echo ""
     echo -e "${YELLOW}⚠️ NOTA:${NC} Gestão de energia foi removida - o sistema usa configuração nativa"
-    
+
     if ! confirm "Aplicar otimizações de desenvolvimento?" "y"; then
         log_info "Otimizações canceladas"
         return 0
     fi
-    
+
     # Aplicar otimizações (sem gestão energia)
     apply_development_kernel_tweaks
     apply_development_limits
     configure_automatic_trim
     optimize_io_scheduler
-    
+
     # Verificar resultados
     verify_development_tweaks
-    
+
     log_success "🎉 Otimizações de desenvolvimento aplicadas com sucesso!"
     echo ""
     echo -e "${YELLOW}💡 PRÓXIMOS PASSOS:${NC}"
@@ -476,7 +585,7 @@ apply_essential_tweaks() {
         "Verificar: cat /proc/sys/vm/swappiness (deve ser ≤15)" \
         "Testar builds paralelos (mais file descriptors)" \
         "Verificar network buffers: cat /proc/sys/net/core/rmem_max"
-    
+
     echo ""
     echo -e "${GREEN}✅ Sistema otimizado para desenvolvimento - gestão energia mantida nativa!${NC}"
     echo ""
