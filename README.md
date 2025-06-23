@@ -269,3 +269,27 @@ dev-health                 # Health check detalhado
 **Objetivo**: Laptop de desenvolvimento otimizado, seguro e inteligente! 🎯
 
 **Sistema testado em**: Ubuntu 20.04+, Debian 11+, com suporte experimental para Fedora e macOS.
+## ⚡ Gestão de Energia
+
+**IMPORTANTE:** A partir da versão limpa, este projeto **NÃO gere energia do CPU**.
+
+### 🎯 Filosofia:
+- ✅ Otimizações de **desenvolvimento** (inotify, limits, I/O)
+- ✅ Ferramentas de **produtividade** (preload, earlyoom, zram)
+- ❌ **SEM gestão energia** - usa configuração nativa do sistema
+
+### 🔧 Para gestão energia personalizada:
+```bash
+# Use o script standalone
+./restore-default-energy.sh
+
+# Ou configure manualmente TLP se preferir:
+sudo apt install tlp tlp-rdw
+sudo systemctl enable tlp
+sudo systemctl start tlp
+```
+
+### 💡 Vantagem:
+- Zero conflitos com ferramentas existentes
+- Sistema usa gestão nativa inteligente
+- Foco apenas em otimizações de desenvolvimento
