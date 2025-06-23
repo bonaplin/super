@@ -263,9 +263,14 @@ check_system_integrity() {
 validate_system_resources() {
     section_header "Validação de Recursos" "💻"
 
+    # Obter recursos com validação mais robusta
     local ram_gb=$(get_ram_gb)
     local cpu_cores=$(get_cpu_cores)
     local storage_type="unknown"
+
+    # Validar valores numéricos
+    ram_gb=$(safe_numeric_validation "$ram_gb" "4")
+    cpu_cores=$(safe_numeric_validation "$cpu_cores" "2")
 
     # Detectar storage com fallback
     if [[ -d /sys/block/nvme0n1 ]]; then
@@ -284,49 +289,40 @@ validate_system_resources() {
 
     echo ""
 
-    # Verificar recursos mínimos
+    # Verificar recursos mínimos com validação segura
     local warnings=()
 
-    # Validação RAM (garantir que é número)
-    if [[ "$ram_gb" =~ ^[0-9]+$ ]] && [[ $ram_gb -lt 4 ]]; then
+    if [[ $ram_gb -lt 4 ]]; then
         warnings+=("RAM baixa (${ram_gb}GB) - algumas otimizações serão conservadoras")
     fi
 
-    # Validação CPU (garantir que é número)
-    if [[ "$cpu_cores" =~ ^[0-9]+$ ]] && [[ $cpu_cores -lt 2 ]]; then
+    if [[ $cpu_cores -lt 2 ]]; then
         warnings+=("CPU de core único - otimizações limitadas")
     fi
 
-    # Verificar load atual com validação robusta
+    # Verificar load atual com validação mais robusta
     if command_exists uptime; then
-        local current_load=$(uptime | awk -F'load average:' '{print $2}' | awk '{print $1}' | tr -d ',' 2>/dev/null || echo "0")
+        local load_line=$(uptime 2>/dev/null || echo "load average: 0.00")
+        local current_load=$(echo "$load_line" | grep -o 'load average:.*' | awk '{print $3}' | tr -d ',' 2>/dev/null || echo "0.00")
 
-        # Limpar o load para garantir que é número válido
+        # Limpar o load e validar
         current_load=$(echo "$current_load" | sed 's/[^0-9.]//g')
 
-        # Garantir que cpu_cores é número
-        local cpu_num=$cpu_cores
-        if [[ ! "$cpu_num" =~ ^[0-9]+$ ]]; then
-            cpu_num=2  # fallback
-        fi
-
-        # Calcular threshold
-        local load_threshold=$((cpu_num * 2))
-
-        # Verificar se load é alto (apenas se current_load for número válido)
-        if [[ "$current_load" =~ ^[0-9]+\.?[0-9]*$ ]] && command_exists bc; then
+        if [[ -n "$current_load" ]] && [[ "$current_load" =~ ^[0-9]+\.?[0-9]*$ ]] && command_exists bc; then
+            local load_threshold=$((cpu_cores * 2))
             if (( $(echo "$current_load > $load_threshold" | bc -l 2>/dev/null || echo 0) )); then
                 warnings+=("Sistema com load alto ($current_load) - aguardar antes de otimizar")
             fi
         fi
     fi
 
-    # Verificar uso de memória atual
+    # Verificar uso de memória atual com validação
     if command_exists free; then
-        local memory_usage=$(free | awk '/^Mem:/ {printf "%.0f", $3*100/$2}' 2>/dev/null || echo "0")
+        local memory_line=$(free 2>/dev/null | grep "^Mem:" || echo "Mem: 100 90 10")
+        local memory_usage=$(echo "$memory_line" | awk '{if($2>0) printf "%.0f", $3*100/$2; else print "0"}' 2>/dev/null || echo "0")
+        memory_usage=$(safe_numeric_validation "$memory_usage" "0")
 
-        # Garantir que memory_usage é número válido
-        if [[ "$memory_usage" =~ ^[0-9]+$ ]] && [[ $memory_usage -gt 90 ]]; then
+        if [[ $memory_usage -gt 90 ]]; then
             warnings+=("Uso de RAM alto (${memory_usage}%) - considerar fechar aplicações")
         fi
     fi
@@ -362,7 +358,8 @@ check_existing_configurations() {
     # 1. Verificar configurações sysctl existentes
     if [[ -d /etc/sysctl.d ]]; then
         local sysctl_files=$(find /etc/sysctl.d -name "*.conf" 2>/dev/null | wc -l)
-        if [[ $sysctl_files -gt 3 ]]; then  # Normalmente há 2-3 ficheiros padrão
+        sysctl_files=$(safe_numeric_validation "$sysctl_files" "0")
+        if [[ $sysctl_files -gt 3 ]]; then
             existing_configs+=("Configurações sysctl customizadas ($sysctl_files ficheiros)")
         fi
     fi
@@ -372,27 +369,26 @@ check_existing_configurations() {
         existing_configs+=("Limites de sistema customizados")
     fi
 
-    # 3. Verificar cron jobs existentes - CORRIGIDO
+    # 3. Verificar cron jobs existentes - TOTALMENTE CORRIGIDO
     local user_crons=0
     local system_crons=0
 
-    # Verificar crontab do utilizador
+    # Verificar crontab do utilizador de forma mais segura
     if command_exists crontab; then
-        user_crons=$(crontab -l 2>/dev/null | grep -v "^#" | grep -v "^$" | wc -l)
-        # Garantir que é um número válido
-        if [[ ! "$user_crons" =~ ^[0-9]+$ ]]; then
-            user_crons=0
+        local cron_output=$(crontab -l 2>/dev/null || echo "")
+        if [[ -n "$cron_output" ]]; then
+            user_crons=$(echo "$cron_output" | grep -v "^#" | grep -v "^$" | wc -l 2>/dev/null || echo 0)
         fi
+        user_crons=$(safe_numeric_validation "$user_crons" "0")
     fi
 
-    # Verificar cron jobs do sistema
-    system_crons=$(find /etc/cron.d /etc/cron.daily /etc/cron.weekly /etc/cron.monthly -type f 2>/dev/null | wc -l)
-    # Garantir que é um número válido
-    if [[ ! "$system_crons" =~ ^[0-9]+$ ]]; then
-        system_crons=0
+    # Verificar cron jobs do sistema de forma mais segura
+    if [[ -d /etc/cron.d ]] || [[ -d /etc/cron.daily ]] || [[ -d /etc/cron.weekly ]] || [[ -d /etc/cron.monthly ]]; then
+        system_crons=$(find /etc/cron.d /etc/cron.daily /etc/cron.weekly /etc/cron.monthly -type f 2>/dev/null | wc -l || echo 0)
+        system_crons=$(safe_numeric_validation "$system_crons" "0")
     fi
 
-    # Comparação segura
+    # Soma total com validação
     local total_crons=$((user_crons + system_crons))
     if [[ $total_crons -gt 10 ]]; then
         existing_configs+=("Muitos cron jobs ($user_crons utilizador + $system_crons sistema)")
@@ -491,19 +487,38 @@ validate_security_environment() {
         security_warnings+=("Firewall UFW não instalado")
     fi
 
-    # 3. Verificar atualizações de segurança
+    # 3. Verificar atualizações de segurança - CORRIGIDO
     local security_updates=0
     if command_exists apt; then
-        security_updates=$(apt list --upgradable 2>/dev/null | grep -c -i security 2>/dev/null || echo 0)
+        # Garantir que obtemos apenas um número
+        security_updates=$(apt list --upgradable 2>/dev/null | grep -i security | wc -l 2>/dev/null || echo 0)
+        # Validar que é um número
+        if [[ ! "$security_updates" =~ ^[0-9]+$ ]]; then
+            security_updates=0
+        fi
         if [[ $security_updates -gt 5 ]]; then
             security_warnings+=("$security_updates atualizações de segurança pendentes")
         fi
     fi
 
-    # 4. Verificar utilizadores com sudo
-    local sudo_users=0
+    # 4. Verificar utilizadores com sudo - CORRIGIDO
+    local sudo_users=1  # valor padrão seguro
     if command_exists getent; then
-        sudo_users=$(getent group sudo 2>/dev/null | cut -d: -f4 | tr ',' ' ' | wc -w || echo 1)
+        # Abordagem mais robusta para contar utilizadores sudo
+        local sudo_group_line=$(getent group sudo 2>/dev/null | head -1)
+        if [[ -n "$sudo_group_line" ]]; then
+            local sudo_list=$(echo "$sudo_group_line" | cut -d: -f4)
+            if [[ -n "$sudo_list" ]]; then
+                # Contar membros, removendo espaços vazios
+                sudo_users=$(echo "$sudo_list" | tr ',' '\n' | grep -v '^$' | wc -l 2>/dev/null || echo 1)
+            fi
+        fi
+
+        # Garantir que é um número válido
+        if [[ ! "$sudo_users" =~ ^[0-9]+$ ]] || [[ $sudo_users -eq 0 ]]; then
+            sudo_users=1
+        fi
+
         if [[ $sudo_users -gt 3 ]]; then
             security_warnings+=("Muitos utilizadores com sudo ($sudo_users)")
         fi
@@ -655,4 +670,19 @@ validate_for_kernel_changes() {
     fi
 
     return 0
+}
+
+safe_numeric_validation() {
+    local value="$1"
+    local default="${2:-0}"
+
+    # Remover espaços e caracteres inválidos
+    value=$(echo "$value" | tr -d ' ' | sed 's/[^0-9]//g')
+
+    # Se vazio ou inválido, usar padrão
+    if [[ -z "$value" ]] || [[ ! "$value" =~ ^[0-9]+$ ]]; then
+        echo "$default"
+    else
+        echo "$value"
+    fi
 }
